@@ -1,0 +1,66 @@
+#! /bin/bash
+#################################################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage New Shell Command/Library
+#      /1994 make my commands to initial shell library(for BBS)
+#      /2003 adding my cluster commands
+#      /2008 upgrade to formula libraries
+#      /2012 reduce and rewrite to compressed command
+# 03/28/2014 initial version of Kage new command k for test
+# 03/31/2014 upgrade function for using old shell libraries and muerge old commands to KC
+# get some functions from Kage old shell functions
+# and remake inteligent shell with mixed old kage shells
+_KGT_VERSION=2.1.12
+KGT_MODE=xcat
+
+error_exit() {
+    echo $*
+    exit 1
+}
+
+_KGT_HOME=$(dirname $(dirname $(readlink -f $0)))
+_K_LIB=$_KGT_HOME/lib
+tag=k
+[ -f $_K_LIB/klib.so ] || error_exit "klib.so file not found"
+. $_K_LIB/klib.so
+
+
+_help() {
+    cat $_KGT_HOME/etc/kgt.hlp
+    echo "Usage: $(basename $0) command [<arg1> <arg2>....]"
+    exit
+}
+
+_setup() {
+    echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
+    echo "Please run \"source /etc/profile.d/kgt.sh\""
+    exit
+}
+
+if [ "$#" == "0" ]; then
+  cat $_KGT_HOME/etc/kgt.hlp
+  exit
+fi
+cmd=$1
+kcmd=$2
+cmd_str="$(cat $_KGT_HOME/etc/kgt.hlp | grep -v "^#" | awk '{print $1}')"
+
+if [ "$cmd" == "help" -o "$cmd" == "--help" ]; then
+    _help
+elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
+    echo "$_KGT_VERSION"
+elif [ "$cmd" == "setup" -o "$cmd" == "--setup" ]; then
+    _setup
+else
+   for cmdname in $cmd_str; do
+      if [ "$cmd" == "$cmdname" ]; then
+          _k_load gt_$cmd || break
+          shift 1
+          trap '' 2
+          $cmd "${@}"
+          trap 2
+          exit
+      fi
+   done
+   echo "Unknown command ($cmd)"
+fi
