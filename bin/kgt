@@ -20,10 +20,10 @@ error_exit() {
 _KGT_HOME=$(dirname $(dirname $(readlink -f $0)))
 _K_LIB=$_KGT_HOME/lib
 tag=k
-[ -f $_K_LIB/klib.so ] || error_exit "klib.so file not found"
-. $_K_LIB/klib.so
 [ -f $_KGT_HOME/etc/kgt.cfg ] || error_exit "kgt.cfg file not found"
 . $_KGT_HOME/etc/kgt.cfg
+[ -f $_K_LIB/klib.so ] || error_exit "klib.so file not found"
+. $_K_LIB/klib.so
 
 
 _help() {

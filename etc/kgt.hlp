@@ -1,3 +1,4 @@
 check      # Check base items on the system
 top        # display CPU utilization 
 temp       # display Physical CPU temperature
+sh         # Run a shell on the system

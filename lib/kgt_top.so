@@ -44,7 +44,7 @@ top() {
   if [ "$KGT_MODE" == "xcat" ]; then
      RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
   else
-     RSH_HOST=$(_k_make_hostname $*)
+     RSH_HOST=$(_k_make_hostname "$@")
   fi
 
   aabb=$(declare -f cpu_top)

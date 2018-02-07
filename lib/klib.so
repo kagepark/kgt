@@ -20,6 +20,10 @@
 ##}
 ####################################
 
+error_return() {
+  return 1
+}
+
 _k_load() {
   local name  opt
   name=$1
@@ -154,7 +158,7 @@ _k_misc_screen_get_session() {
 
 _k_misc_screen() { #run command on the screen
   local _opt _cmd
-  _opt=$(_k_opt "$*" -o) && shift 2
+  _opt=$(_k_opt -o 1 0 "$*") && shift 2
   _cmd=$*
 
   while [ 1 ]; do
@@ -231,82 +235,117 @@ _k_misc_skip_blank(){
    echo $(echo $in | sed 's/\ //g')
 }
 
-_k_opt_opt() {
-  local z opts find num n
-  opts=( $1 )
-  find=$2
-  num=$3
-  [ $# -lt 2 ] && error_return "_k_opt <src> <find> [<output num>]"
-  [ -n "$num" ] || num=1
-  for z in $(seq 0 $(( ${#opts[*]} - 1)) ); do
-    if [ "$find" == "${opts[$z]}" ]; then
-      for n in $(seq 1 $num); do
-        echo "${opts[$(($z + $n))]}"
-      done
-      return 0
-      break
-    fi
-  done
-  return 1
-}
-
-_k_opt_num() {
-  local z opts find n
-  opts=( $1 )
-  find=$2
-  [ $# -lt 2 ] && error_return "_k_opt <src> <find>"
-  for z in $(seq 0 $(( ${#opts[*]} - 1)) ); do
-    if [ "$find" == "${opts[$z]}" ]; then
-      for n in $(seq $(( $z+1))  $(( ${#opts[*]} - 1)) ); do
-        if echo ${opts[$n]} | grep "^-" > /dev/null ; then
-           echo $(( $n-$z -1))
-           return 0
-           break
-        fi
-      done
-      echo $(( $n-$z ))
-      return 0
-      break
-    fi
-  done
-  return 1
-}
-
 _k_opt_find() {
   local z opts find n
-  opts=( $1 )
-  find=$2
-  [ $# -lt 2 ] && error_return "_k_opt <src> <find>"
-  for z in $(seq 0 $(( ${#opts[*]} - 1)) ); do
+  find=${@:1:1}
+  opts=("${@:2}")
+  [ $# -lt 2 ] && error_return "_k_opt <find> <opts>"
+  for ((z=0; z<${#opts[@]}; z++)); do 
     if [ "$find" == "${opts[$z]}" ]; then
-      echo $z
+      echo "$z"
       return 0
-      break
     fi
   done
   return 1
 }
 
+#_k_opt_end <num> <opts>
 _k_opt_end() {
-   local opts
-   opts=( $* )
-   echo ${opts[$(( ${#opts[*]}-1 ))]}
+   local opts num get total
+   num=${@:1:1}
+   opts=("${@:2}")
+   total=$((${#opts[@]}-1))
+   opt_out=()
+   if [ ! -n "$num" ]; then
+       echo "${opts[@]}"
+       return 0
+   elif [ "$num" == "all" -o "$num" == "0" ]; then
+       fnum=0
+   elif (($num>=1)); then
+       fnum=$(($total-$num+1))
+   fi
+   for ((z=$total; z >= $fnum; z--)); do
+       echo "${opts[$z]}" | grep "^-" >& /dev/null && break 
+       [ "${get[*]}" ] && get=("${opts[$z]}" "$get") || get=("${opts[$z]}");
+   done
+   if [ -n "${get[*]}" ]; then
+       echo "${get[*]}"
+       opt_out=("${get[@]}")
+       export opt_out
+       return 0
+   else
+       return 1
+   fi
+}
+
+_k_opt() {
+    local input find num get ro opts
+    find="${@:1:1}"
+    num="${@:2:1}"
+    ro="${@:3:1}"
+    opts=( "${@:4}" )
+
+    opt_out=()
+
+    [ "$find" == "--help" ] && num=0
+    [ -n "$num" ] || num=1
+    num_input=${#opts[@]}
+    for ((i=0;i<$num_input;i++)); do
+       if [ "${opts[$i]}" == "$find" ]; then
+          unset opts[$i]
+          if [ "$num" == "0" ]; then
+             get[0]="help"
+             break
+          elif [ "$num" == "all" ]; then
+             fnum=$(($num_input-1))
+          elif (($num>0)); then
+             fnum=$(($num+$i))
+             (($fnum>=$num_input)) && return 1
+          fi
+
+          for ((z=$(($i+1)); z <=$fnum; z++)); do
+                 if echo ${opts[$z]} | grep "^-" >/dev/null; then
+                    [ "$num" == "all" ] && break || return 1
+                 else
+                    [ -n "${get[*]}" ] && get=("${get[@]}" "${opts[$z]}") || get=("${opts[$z]}")
+                    unset opts[$z]
+                 fi
+          done
+       fi
+    done
+
+    if [ -n "${get[*]}" ]; then
+          if [ "$ro" == "1" ]; then
+              opts=("${opts[@]}")
+              echo "${opts[@]}"
+              opt_out=("${opts[@]}")
+          elif [ "$ro" == "2" ]; then
+              opts=("${opts[@]}")
+              echo "${get[@]}|${opts[@]}"
+              opt_out=("${get[@]}" "|" "${opts[@]}")
+          else
+              if [ "${get[*]}" != "help" ]; then
+                   echo "${get[@]}"
+                   opt_out=("${get[@]}")
+              fi
+          fi
+          export opt_out
+          return 0
+    else
+          return 1
+    fi
 }
 
 _k_make_hostname() {
    local group_name hosts
    _line_type=0
-   _k_opt_opt "$*" -l >/dev/null && _line_type=1
-   _k_opt_opt "$*" -w >/dev/null && _line_type_word=1
-   _group_num=$(_k_opt_num "$*" -g)
-   group_name=$(_k_opt_opt "$*" -g $_group_num)
-   _host_num=$(_k_opt_num "$*" -h)
-   hosts=$(_k_opt_opt "$*" -h $_host_num)
+   _k_opt -l 0 0 "$@" >/dev/null && _line_type=1
+   _k_opt -w 0 0 "$@" >/dev/null && _line_type_word=1
+   group_name=$(_k_opt -g 1 0 "$@")
+   hosts=$(_k_opt -h 1 0 "$@")
    if [ -n "$group_name" ]; then
      _k_get_all_hostname $group_name
    elif [ -n "$hosts" ]; then
-#     _host_num=$(_k_opt_num "$*" -h)
-#     hosts=$(_k_opt_opt "$*" -h $_host_num)
      _hosts=$(_k_misc_braket $hosts)
 
      if [ "$_line_type" == "1" ]; then
@@ -329,7 +368,7 @@ _k_get_all_hostname() {
    group_name=$1
    if [ -f /etc/hosts ]; then
       if [ -n "$group_name" ]; then
-         if [ "$_KGT_HOSTNAME_DASH" == "1" ]; then
+         if [ "$KGT_HOSTNAME_DASH" == "1" ]; then
             grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | grep " ${group_name}-[0-9]" | awk '{print $2}' | while read line; do 
                [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
             done
