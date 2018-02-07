@@ -8,7 +8,7 @@
 check() {
   RSH_STR="ssh -o ConnectTimeout=5 "
   if [ "$KGT_MODE" == "xcat" ]; then
-     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
+     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
   else
      RSH_HOST=$(_k_make_hostname $*)
   fi
