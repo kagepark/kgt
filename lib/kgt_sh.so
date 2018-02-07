@@ -26,6 +26,12 @@ sh() {
      RSH_CMD=ssh
   fi
   RSH_CMD_ON_NODE=$(_k_opt -c 1 0 "$@")
+  if [ ! -n "$RSH_CMD_ON_NODE" ]; then
+     echo "${FUNCNAME} <hostname> -c \"commands\""
+     echo "  example"
+     echo "  -c \"hostname; pwd\""
+     exit
+  fi
   RSH_HOST=$(_k_make_hostname "$@")
 
   printf "%17s\n" hostname

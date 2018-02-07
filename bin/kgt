@@ -27,8 +27,16 @@ tag=k
 
 
 _help() {
+    echo "Usage: $(basename $0) command <hostname> [<arg1> ....]"
+    echo 
+    echo " <hostname>"
+    echo "  -g <group name>"
+    echo "  -h <hostname>"
+    echo "  -h <group name>-0[001-003]"
+    echo "  -h <group name>-0[001,003]"
+    echo
+    echo " <command>"
     cat $_KGT_HOME/etc/kgt.hlp
-    echo "Usage: $(basename $0) command [<arg1> <arg2>....]"
     exit
 }
 
