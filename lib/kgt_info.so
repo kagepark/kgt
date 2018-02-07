@@ -55,6 +55,11 @@ node_info() {
   printf "%17s : %-s\n" "Infiniband" $(ls /sys/class/infiniband | wc -l)
   for ibn in $(ls /sys/class/infiniband/); do
       printf "%13s + %-13s : %s\n" "" "IB Name" "$ibn"
+      ib_drv=$([ -L /sys/class/infiniband/$ibn/device/driver ] && basename $(readlink -f /sys/class/infiniband/$ibn/device/driver) || echo "-")
+      if [ "$ib_drv" != "-" ]; then
+        ib_drv_ver=$([ -f /sys/module/$ib_drv/version ] && cat  /sys/module/$ib_drv/version || echo "-")
+        printf "%16s - %-10s : %s\n" "" "Driver" "$ib_drv($ib_drv_ver)"
+      fi
       printf "%16s - %-10s : %s\n" "" "Firmware" "$([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")"
       printf "%16s - %-10s : %s\n" "" "BoardID" "$([ -f /sys/class/infiniband/$ibn/board_id ] && cat /sys/class/infiniband/$ibn/board_id || echo "-")"
       for port in $(ls /sys/class/infiniband/$ibn/ports); do
