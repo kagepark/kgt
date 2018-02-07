@@ -1,0 +1,14 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+hpl() {
+    echo "${FUNCNAME} <hostname> <opt>"
+    echo " <opt>"
+    echo "  -c : Check HPL"
+    echo "  -r : Run HPL Single node"
+    echo "  -m : Run HPL MPI"
+    echo "  -k : Kill HPL"
+    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
+}
