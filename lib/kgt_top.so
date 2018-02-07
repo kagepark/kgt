@@ -4,24 +4,7 @@
 # License : GPL
 ####################################
 
-top() {
-  if [ "$KGT_MODE" == "xcat" ]; then
-     DSH_TIMEOUT=5
-     RSH_STR="xdsh "
-  else
-     RSH_STR="pdsh "
-     shift 1
-  fi
-  if [ "$KGT_MODE" == "xcat" ]; then
-     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
-  fi
-
-  printf "Memory unit   : GB\n"
-  echo "CPU Util unit : %"
-  echo "Run Util unit : number"
-  echo
-  printf "%17s %5s %5s %5s %5s %5s %7s %7s %7s %7s %7s %7s\n" hostname user sys nice idle Run used free shared buffers cached total
-  $RSH_STR $RSH_HOST '(
+cpu_top() {
        fcpul=( $(cat /proc/stat) )
        sleep 0.2
        lcpul=( $(cat /proc/stat) )
@@ -44,10 +27,41 @@ top() {
        mem=( $(free|grep Mem) )
        run=( $(cat /proc/stat |grep procs_running) )
 
-       #(printf "%5s %5s %5s %5s %5s %10s %10s %10s %10s %10s %10s\n" $r_user $r_sys $r_nice $r_idle ${run[1]} `expr ${mem[2]} / 1024 `  `expr ${mem[3]} / 1024` `expr ${mem[4]} / 1024` `expr ${mem[5]} / 1024` `expr ${mem[6]} / 1024` `expr ${mem[1]} / 1024` )
-       #printf "%5s %5s %5s %5s %5s %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f" $r_user $r_sys $r_nice $r_idle ${run[1]} $(bc -l <<< "${mem[2]} / (1024 * 1024)") $(bc -l <<< "${mem[2]} / (1024*1024)")  $(bc -l <<< "${mem[3]} / (1024*1024)") $(bc -l <<< "${mem[4]} / (1024*1024)") $(bc -l <<< "${mem[5]} / (1024*1024)") $(bc -l <<< "${mem[6]} / (1024*1024)") $(bc -l <<< "${mem[1]} / (1024*1024)") 
-       printf "%5s %5s %5s %5s %5s %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f" $r_user $r_sys $r_nice $r_idle ${run[1]} $(bc -l <<< "${mem[2]} /(1024 * 1024)")  $(bc -l <<< "${mem[3]} / (1024*1024)") $(bc -l <<< "${mem[4]} / (1024*1024)")  $(bc -l <<< "${mem[5]} / (1024*1024)") $(bc -l <<< "${mem[6]} / (1024*1024)") $(bc -l <<< "${mem[1]} / (1024*1024)")
-)' | sort | while read line; do
-     printf "%17s %5s %5s %5s %5s %5s %7s %7s %7s %7s %7s %7s\n" $line
-  done
+       printf "%5s %5s %5s %5s %5s %7.1f %7.1f %7.1f %7.1f %7.1f %7.1f" $r_user $r_sys $r_nice $r_idle ${run[1]} $(bc -l <<< "${mem[2]} /(1024 * 1024)")  $(bc -l <<< "${mem[3]} / (1024*1024)") $(bc -l <<< "${mem[4]} / (1024*1024)")  $(bc -l <<< "${mem[5]} / (1024*1024)") $(bc -l <<< "${mem[6]} / (1024*1024)") $(bc -l <<< "${mem[1]} / (1024*1024)")
+}
+
+top() {
+  if [ "$KGT_MODE" == "xcat" ]; then
+     DSH_TIMEOUT=5
+     RSH_STR="xdsh "
+  elif [ "$KGT_MODE" == "pdsh" ]; then
+     RSH_STR="pdsh "
+     shift 1
+  else
+     RSH_STR="ssh -o ConnectTimeout=5 "
+     RSH_CMD=ssh
+  fi
+  if [ "$KGT_MODE" == "xcat" ]; then
+     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
+  else
+     RSH_HOST=$(_k_make_hostname $*)
+  fi
+
+  aabb=$(declare -f cpu_top)
+  printf "Memory unit   : GB\n"
+  echo "CPU Util unit : %"
+  echo "Run Util unit : number"
+  echo
+  printf "%17s %5s %5s %5s %5s %5s %7s %7s %7s %7s %7s %7s\n" hostname user sys nice idle Run used free shared buffers cached total
+  if [ "$RSH_CMD" == "ssh" ]; then
+    for ii in $RSH_HOST; do
+       printf "%17s " $ii
+       $RSH_STR $ii "$aabb; cpu_top" 2>/dev/null || echo "ssh connection timeout"
+       echo
+    done
+  else
+    $RSH_STR $RSH_HOST "$aabb; cpu_top" | sort | while read line; do
+      printf "%17s %5s %5s %5s %5s %5s %7s %7s %7s %7s %7s %7s\n" $line
+    done
+  fi
 }
