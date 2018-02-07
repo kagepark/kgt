@@ -1,0 +1,40 @@
+####################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+cpu_temp() {
+       if [ -f /sys/bus/platform/devices/coretemp.0/hwmon/hwmon*/temp1_input ]; then
+          for ii in $(ls -d /sys/bus/platform/devices/coretemp.*); do
+             #id=$(($(echo $ii | cut -d . -f2) + 1 ))
+             #temp=$([ -f $ii/hwmon/hwmon${id}/temp1_input ] && cat $ii/hwmon/hwmon${id}/temp1_input)
+             temp=$([ -f $ii/hwmon/hwmon*/temp1_input ] && cat $ii/hwmon/hwmon*/temp1_input)
+             [ -n "$temp" ] && printf "%5.1f " $(bc -l <<< "$temp / 1000")
+          done
+       else
+          echo "Not support this system"
+       fi
+}
+
+sh() {
+  if [ "$KGT_MODE" == "pdsh" ]; then
+     RSH_STR="pdsh "
+     shift 1
+  else
+     RSH_STR="ssh -o ConnectTimeout=5 "
+     RSH_CMD=ssh
+  fi
+  RSH_CMD_ON_NODE=$(_k_opt -c 1 0 "$@")
+  RSH_HOST=$(_k_make_hostname "$@")
+
+  printf "%17s\n" hostname
+  if [ "$RSH_CMD" == "ssh" ]; then
+    for ii in $RSH_HOST; do
+       printf "%17s " $ii
+       echo "$($RSH_STR $ii "$RSH_CMD_ON_NODE" 2>/dev/null || echo "ssh connection timeout")"
+    done
+  else
+    $RSH_STR $RSH_HOST "$RSH_CMD_ON_NODE"
+  fi
+}
