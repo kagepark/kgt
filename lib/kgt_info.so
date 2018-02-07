@@ -22,6 +22,8 @@ node_info() {
   hyper=$(echo "$lscpuinfo" | grep "^Thread(s) per core" | awk '{print $4}')
 
   printf "%17s : %-s\n" "Hostname" "$(hostname)"
+  printf "%17s : %-s\n" "M/B" $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-")
+  printf "%17s : %-s\n" "BIOSv" $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-")
   printf "%17s : %-s\n" "CPUs" "${cpunum}(${corenum}*${socketnum})"
   printf "%17s : %-s\n" "HT"  "$( (( $hyper > 1 )) && echo on || echo off)"
   printf "%17s : %-s\n" "GHz" "$hz"
@@ -39,7 +41,7 @@ node_info() {
       printf "%16s - %-10s : %s\n" "" "Duplex" $(cat /sys/class/net/$nic/duplex)
   done
 
-  printf "%17s : %-s\n" "HDD" $(ls /sys/block/ | grep -v "dm-" | wc -l)
+  printf "%17s : %-s\n" "HDD" $(ls /sys/block/ | grep -v -e "dm-" -e "loop"| wc -l)
   for hdd in $(ls /sys/block | grep -v -e "^dm" -e "^loop"); do
       printf "%13s + %-13s : %s\n" "" "HDD Name" $hdd
       printf "%16s - %-10s : %s\n" "" "Path" "$(cat /sys/block/$hdd/dev)"
@@ -50,12 +52,18 @@ node_info() {
   done
   printf "%17s : %-s\n" "IPMI" $([ -c /dev/ipmi0 ] && echo On || echo "-")
   printf "%17s : %-s\n" "BMCFV" $([ -f /usr/bin/ipmitool ] && ipmitool mc info | grep "^Firmware Revision" | awk '{print $4}' || echo "x")
-  printf "%17s : %-s\n" "BIOSv" $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-")
-  printf "%17s : %-s\n" "M/B" $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-")
-  printf "%17s : %-s\n" "IB" $(ls /sys/class/net/ | grep "ib[0-9]" | wc -l)
-  for ibn in $(ls -d /sys/class/infiniband/mlx*); do
-      printf "%13s + %-13s : %s\n" "" "IB Name" $ibn
-      printf "%16s - %-10s : %s\n" "" "Firmware" $([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")
+  printf "%17s : %-s\n" "Infiniband" $(ls /sys/class/infiniband | wc -l)
+  for ibn in $(ls /sys/class/infiniband/); do
+      printf "%13s + %-13s : %s\n" "" "IB Name" "$ibn"
+      printf "%16s - %-10s : %s\n" "" "Firmware" "$([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")"
+      printf "%16s - %-10s : %s\n" "" "BoardID" "$([ -f /sys/class/infiniband/$ibn/board_id ] && cat /sys/class/infiniband/$ibn/board_id || echo "-")"
+      for port in $(ls /sys/class/infiniband/$ibn/ports); do
+         printf "%16s + %-10s : %s\n" "" "Port" $port
+         printf "%18s - %-8s : %s\n" "" "State" "$(cat /sys/class/infiniband/$ibn/ports/$port/state | awk '{print $2}')"
+         printf "%18s - %-8s : %s\n" "" "PhyState" "$(cat /sys/class/infiniband/$ibn/ports/$port/phys_state | awk '{print $2}')"
+         printf "%18s - %-8s : %s\n" "" "Link" "$(cat /sys/class/infiniband/$ibn/ports/$port/link_layer)"
+         printf "%18s - %-8s : %s\n" "" "Rate" "$(cat /sys/class/infiniband/$ibn/ports/$port/rate)"
+      done
   done
 }
 

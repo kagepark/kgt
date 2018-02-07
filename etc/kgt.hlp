@@ -3,3 +3,4 @@ top        # display CPU utilization
 temp       # display Physical CPU temperature
 sh         # Run a shell on the system
 info       # display physical information
+ipmi       # power handle with IPMI (It need <hostname>-ipmi hostname for IPMI IP)

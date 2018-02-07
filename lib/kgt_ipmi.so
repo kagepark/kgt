@@ -1,0 +1,24 @@
+####################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+ipmi() {
+  cmd=$1
+  chk=0
+  for ii in off on reset cycle status; do
+     if [ "$ii" == "$cmd" ]; then
+         chk=1
+         break
+     fi
+  done
+  [ "$chk" == "0" ] && error_exit "$cmd command not found"
+  shift 1
+  RSH_HOST=$(_k_make_hostname "$@")
+
+  for ii in $RSH_HOST; do
+       printf "%17s " $ii
+       printf "%-5s\n" "$(ipmitool -I lanplus -H ${ii}-ipmi -U ADMIN -P ADMIN chassis power $cmd >& /dev/null && echo $cmd || echo fale)"
+  done
+}
