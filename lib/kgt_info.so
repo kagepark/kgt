@@ -1,0 +1,79 @@
+####################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+node_info() {
+  lscpuinfo=$(lscpu)
+  cpupower=$(cpupower frequency-info)
+  cpunum=$(echo "$lscpuinfo" | grep "^CPU(s)" | awk '{print $2}')
+  socketnum=$(echo "$lscpuinfo" | grep "^Socket" | awk '{print $2}')
+  corenum=$(echo "$lscpuinfo" | grep "^Core(s)" | awk '{print $4}')
+  hzdrv=$(echo "$cpupower" | grep "driver:" | awk '{print $2}')
+  hzcur_unit=$(echo "$cpupower" | grep "current CPU frequency:" | awk '{print $5}')
+  if [ "$hzcur_unit" == "MHz" ]; then
+    hzcur=$(printf "%4.2f" $(($(echo "$cpupower" | grep "current CPU frequency:" | awk '{print $4}')/1000)))
+  else
+    hzcur=$(echo "$cpupower" | grep "current CPU frequency:" | awk '{print $4}')
+  fi
+  hzmax=$(echo "$cpupower" | grep "hardware limits:" | awk '{print $6}')
+  hz="${hzdrv}(${hzcur}/${hzmax})"
+  hyper=$(echo "$lscpuinfo" | grep "^Thread(s) per core" | awk '{print $4}')
+
+  printf "%17s : %-s\n" "Hostname" "$(hostname)"
+  printf "%17s : %-s\n" "CPUs" "${cpunum}(${corenum}*${socketnum})"
+  printf "%17s : %-s\n" "HT"  "$( (( $hyper > 1 )) && echo on || echo off)"
+  printf "%17s : %-s\n" "GHz" "$hz"
+  printf "%17s : %-6.1f\n" "Mem(G)" "$(bc -l <<< $(grep "^MemTotal" /proc/meminfo  | awk '{print $2}')/$((1024*1024)))"
+  printf "%17s : %-s\n" "NTP" $(ps -ef |grep ntpd | grep -v grep >& /dev/null && echo Run || echo "-")
+  printf "%17s : %-s\n" "NIC" $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo" | wc -l)
+  for nic in $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo"); do
+      printf "%13s + %-13s : %s\n" "" "NIC Name" $nic
+      printf "%16s - %-10s : %s\n" "" "MAC Addr" $(cat /sys/class/net/$nic/address)
+      printf "%16s - %-10s : %s\n" "" "State" $(cat /sys/class/net/$nic/operstate)
+      printf "%16s - %-10s : %s\n" "" "Module" $(basename $(readlink -f /sys/class/net/$nic/device/driver))
+      printf "%16s - %-10s : %s\n" "" "version" $([ -f /sys/class/net/$nic/device/driver/module/version ] && cat /sys/class/net/$nic/device/driver/module/version || echo "-")
+      printf "%16s - %-10s : %s\n" "" "OS Ver" $([ -f /sys/class/net/$nic/device/driver/module/rhelversion ] && cat /sys/class/net/$nic/device/driver/module/rhelversion || echo "-")
+      printf "%16s - %-10s : %s\n" "" "Speed" $(cat /sys/class/net/$nic/speed)
+      printf "%16s - %-10s : %s\n" "" "Duplex" $(cat /sys/class/net/$nic/duplex)
+  done
+
+  printf "%17s : %-s\n" "HDD" $(ls /sys/block/ | grep -v "dm-" | wc -l)
+  for hdd in $(ls /sys/block | grep -v -e "^dm" -e "^loop"); do
+      printf "%13s + %-13s : %s\n" "" "HDD Name" $hdd
+      printf "%16s - %-10s : %s\n" "" "Path" "$(cat /sys/block/$hdd/dev)"
+      printf "%16s - %-10s : %s\n" "" "Model" "$(cat /sys/block/$hdd/device/model)"
+      printf "%16s - %-10s : %s\n" "" "Size" $(fdisk -l /dev/$hdd | grep "^Disk /dev" | awk '{print $3 $4}' | sed "s/,//g")
+      printf "%16s - %-10s : %s\n" "" "S/N" "$(awk '{print $1}' /sys/block/$hdd/device/serial)"
+      printf "%16s - %-10s : %s\n" "" "Firmware" "$(cat /sys/block/$hdd/device/firmware_rev)"
+  done
+  printf "%17s : %-s\n" "IPMI" $([ -c /dev/ipmi0 ] && echo On || echo "-")
+  printf "%17s : %-s\n" "BMCFV" $([ -f /usr/bin/ipmitool ] && ipmitool mc info | grep "^Firmware Revision" | awk '{print $4}' || echo "x")
+  printf "%17s : %-s\n" "BIOSv" $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-")
+  printf "%17s : %-s\n" "M/B" $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-")
+  printf "%17s : %-s\n" "IB" $(ls /sys/class/net/ | grep "ib[0-9]" | wc -l)
+  for ibn in $(ls -d /sys/class/infiniband/mlx*); do
+      printf "%13s + %-13s : %s\n" "" "IB Name" $ibn
+      printf "%16s - %-10s : %s\n" "" "Firmware" $([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")
+  done
+}
+
+info() {
+  RSH_STR="ssh -o ConnectTimeout=5 "
+  if [ "$KGT_MODE" == "xcat" ]; then
+     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
+  else
+     RSH_HOST=$(_k_make_hostname $*)
+  fi
+
+  for ii in $RSH_HOST; do
+     printf "%17s\n" "$ii"
+     trap 2
+     aa=node_info
+     bb="$(declare -f $aa); $aa"
+     $RSH_STR $ii "$bb" 2>/dev/null || \
+     echo -n "Connection time out"
+     echo
+  done
+}
