@@ -11,7 +11,6 @@
 # get some functions from Kage old shell functions
 # and remake inteligent shell with mixed old kage shells
 _KGT_VERSION=2.1.12
-_KGT_HOSTNAME_DASH=1
 
 error_exit() {
     echo $*
@@ -23,6 +22,8 @@ _K_LIB=$_KGT_HOME/lib
 tag=k
 [ -f $_K_LIB/klib.so ] || error_exit "klib.so file not found"
 . $_K_LIB/klib.so
+[ -f $_KGT_HOME/etc/kgt.cfg ] || error_exit "kgt.cfg file not found"
+. $_KGT_HOME/etc/kgt.cfg
 
 
 _help() {
