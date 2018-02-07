@@ -294,26 +294,57 @@ _k_opt_end() {
 }
 
 _k_make_hostname() {
+   local group_name hosts
    _line_type=0
    _k_opt_opt "$*" -l >/dev/null && _line_type=1
    _k_opt_opt "$*" -w >/dev/null && _line_type_word=1
+   _group_num=$(_k_opt_num "$*" -g)
+   group_name=$(_k_opt_opt "$*" -g $_group_num)
    _host_num=$(_k_opt_num "$*" -h)
    hosts=$(_k_opt_opt "$*" -h $_host_num)
-   _hosts=$(_k_misc_braket $hosts)
+   if [ -n "$group_name" ]; then
+     _k_get_all_hostname $group_name
+   elif [ -n "$hosts" ]; then
+#     _host_num=$(_k_opt_num "$*" -h)
+#     hosts=$(_k_opt_opt "$*" -h $_host_num)
+     _hosts=$(_k_misc_braket $hosts)
 
-   if [ "$_line_type" == "1" ]; then
+     if [ "$_line_type" == "1" ]; then
       if [ "$_line_type_word" == "1" ]; then
           echo $_hosts | sed "s/ /,/g"
       else
           echo $_hosts
       fi
-   else
-     for nh in $_hosts; do
+     else
+      for nh in $_hosts; do
        echo $nh
-     done
+      done
+     fi
+   else
+     _k_get_all_hostname
    fi
 }
 
+_k_get_all_hostname() {
+   group_name=$1
+   if [ -f /etc/hosts ]; then
+      if [ -n "$group_name" ]; then
+         if [ "$_KGT_HOSTNAME_DASH" == "1" ]; then
+            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | grep " ${group_name}-[0-9]" | awk '{print $2}' | while read line; do 
+               [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
+            done
+         else
+            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | grep " ${group_name}[0-9]" | awk '{print $2}' | while read line; do
+               [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
+            done
+         fi
+      else
+         grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | while read line; do
+            [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
+         done
+      fi
+   fi
+}
 
 _k_net_ip2str() {
     local num

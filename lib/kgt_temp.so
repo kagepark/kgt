@@ -4,23 +4,7 @@
 # License : GPL
 ####################################
 
-temp() {
-  if [ "$KGT_MODE" == "xcat" ]; then
-     DSH_TIMEOUT=5
-     RSH_STR="xdsh "
-  else
-     RSH_STR="pdsh "
-     shift 1
-  fi
-  if [ "$KGT_MODE" == "xcat" ]; then
-     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
-  fi
-
-  echo "Physical CPU Temperature unit : *C"
-  echo
-  printf "%17s %-5s\n" hostname CPU#
-  DSH_TIMEOUT=5
-  xdsh $RSH_HOST '(
+cpu_temp() {
        if [ -f /sys/bus/platform/devices/coretemp.0/hwmon/hwmon*/temp1_input ]; then
           for ii in $(ls -d /sys/bus/platform/devices/coretemp.*); do
              #id=$(($(echo $ii | cut -d . -f2) + 1 ))
@@ -31,10 +15,40 @@ temp() {
        else
           echo "Not support this system"
        fi
-  )' | sort | while read line; do
+}
+
+temp() {
+  if [ "$KGT_MODE" == "xcat" ]; then
+     DSH_TIMEOUT=5
+     RSH_STR="xdsh "
+  elif [ "$KGT_MODE" == "pdsh" ]; then
+     RSH_STR="pdsh "
+     shift 1
+  else
+     RSH_STR="ssh -o ConnectTimeout=5 "
+     RSH_CMD=ssh
+  fi
+  if [ "$KGT_MODE" == "xcat" ]; then
+     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0") | sed "s/ /,/g")
+  else
+     RSH_HOST=$(_k_make_hostname $*)
+  fi
+
+  echo "Physical CPU Temperature unit : *C"
+  echo
+  printf "%17s %-5s\n" hostname CPU#
+  aabb=$(declare -f cpu_temp)
+  if [ "$RSH_CMD" == "ssh" ]; then
+    for ii in $RSH_HOST; do
+       printf "%17s " $ii
+       printf "%-5s\n" "$(echo $($RSH_STR $ii "$aabb; cpu_temp" 2>/dev/null || echo "ssh connection timeout"))"
+    done
+  else
+    $RSH_STR $RSH_HOST "$aabb; cpu_temp" | sort | while read line; do
       aa=($line)
       printf "%17s " ${aa[0]}
       unset aa[0]
       printf "%-5s\n" "${aa[*]}"
-  done
+    done
+  fi
 }

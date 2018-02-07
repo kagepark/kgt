@@ -6,15 +6,15 @@
 
 
 check() {
-  if [ "$KGT_MODE" == "xcat" ]; then
-     DSH_TIMEOUT=5
-     RSH_STR="ssh -o ConnectTimeout=$DSH_TIMEOUT "
-  else
-     RSH_STR="pdsh "
-     shift 1
-  fi
+  RSH_STR="ssh -o ConnectTimeout=5 "
   if [ "$KGT_MODE" == "xcat" ]; then
      RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
+  else
+     if [ "$1" == "-h" ]; then
+        RSH_HOST=$(_k_make_hostname $*)
+     else
+        RSH_HOST=$(_k_get_all_hostname)
+     fi
   fi
 
   printf "%17s " "Hostname"

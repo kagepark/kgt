@@ -11,7 +11,7 @@
 # get some functions from Kage old shell functions
 # and remake inteligent shell with mixed old kage shells
 _KGT_VERSION=2.1.12
-KGT_MODE=xcat
+_KGT_HOSTNAME_DASH=1
 
 error_exit() {
     echo $*
