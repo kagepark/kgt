@@ -366,8 +366,24 @@ pingpong() {
    host_count=$(_k_opt -c 1 0 "$@")
    loop_num=$(_k_opt -l 1 0 "$@")
    unit_num=$(_k_opt -u 1 0 "$@")
+   mpi_type=$(_k_opt -mt 1 0 "$@")
    _k_opt -find 0 0 "$@" >& /dev/null && find_ib_bad=1
-   [ -n "$hosts" ] || error_exit "${FUNCNAME} <-h <hostname> or -g <group name>> [-s <share dir:/global>] [-hca <hca dev name>] [-p <hca port>] [-l <loop#>] [-u <pingpong unit:30> [-find [-f <filter num:110>]]"
+   if [ ! -n "$hosts" ]; then
+     echo "${FUNCNAME} <-h <hostname> or -g <group name>>  [<option1> ....]"
+     echo 
+     echo "<options>"
+     echo "  -s <share dir>       : default /global"
+     echo "  -hca <hca dev name> "
+     echo "     -p <hca port>     : Default 1"
+     echo "  -l <loop#>           : default 1"
+     echo "  -u <pingpong unit>   : Testing group unit, default 30 nodes"
+     echo "  -find                : Find low speed"
+     echo "     -f <filter num>   : Fileter value, default 110 MBS"
+     echo "  -mt <mpi app>        : Select MPI App(mpi,intel,mvapich,openmpi), default mpi"
+     echo 
+     echo " * Not support intel mpi, mvapich, openmpi yet"
+     exit
+   fi
 
    host_list=($(_k_make_hostname $@))
 
