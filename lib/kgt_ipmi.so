@@ -5,9 +5,23 @@
 ####################################
 
 ipmi() {
+  if [ "$#" == "0" ]; then
+      echo "${FUNCNAME} <command> <opt>"
+      echo ""
+      echo " <command>"
+      echo " on, off, reset, cycle, status, console"
+      echo ""
+      echo " <opt>"
+      echo "  -u <ipmi user> : default is ADMIN"
+      echo "  -p <ipmi pass> : default is ADMIN"
+      echo "  -i <ipmi ip>   : using IPMI IP instead hostname"
+      echo "  -h <hostname>  : it should be has <hostname>-ipmi hostname for IPMI"
+      echo "  -g <group name>"
+      exit
+  fi
   cmd=$1
   chk=0
-  for ii in off on reset cycle status; do
+  for ii in off on reset cycle status console; do
      if [ "$ii" == "$cmd" ]; then
          chk=1
          break
@@ -15,10 +29,31 @@ ipmi() {
   done
   [ "$chk" == "0" ] && error_exit "$cmd command not found"
   shift 1
-  RSH_HOST=$(_k_make_hostname "$@")
+  ipmi_user=$(_k_opt -u 1 0 "$@") || ipmi_user=ADMIN
+  ipmi_pass=$(_k_opt -p 1 0 "$@") || ipmi_pass=ADMIN
+  if  RSH_HOST=$(_k_opt -i 1 0 "$@"); then
+     ipmi_ip=1
+  else
+     RSH_HOST=$(_k_make_hostname "$@")
+  fi
+echo ">>> $ipmi_ip : $RSH_HOST"
 
-  for ii in $RSH_HOST; do
+  if [ "$cmd" == "console" ]; then
+     aa=($RSH_HOST)
+     if [ "${#aa[*]}" == "1" ]; then
+         [ "$ipmi_ip" == "1" ] && ipmitool -I lanplus -H $RSH_HOST -U $ipmi_user -P $ipmi_pass sol activate || ipmitool -I lanplus -H ${RSH_HOST}-ipmi -U $ipmi_user -P $ipmi_pass sol activate
+     else
+         echo "console should need only one hostname"
+         exit 1
+     fi
+  else
+     for ii in $RSH_HOST; do
        printf "%17s " $ii
-       printf "%-5s\n" "$(ipmitool -I lanplus -H ${ii}-ipmi -U ADMIN -P ADMIN chassis power $cmd >& /dev/null && echo $cmd || echo fale)"
-  done
+       if [ "$ipmi_ip" == "1" ]; then
+          printf "%-5s\n" "$(ipmitool -I lanplus -H ${ii} -U $ipmi_user -P $ipmi_pass chassis power $cmd || echo fale)"
+       else
+          printf "%-5s\n" "$(ipmitool -I lanplus -H ${ii}-ipmi -U $ipmi_user -P $ipmi_pass chassis power $cmd || echo fale)"
+       fi
+     done
+  fi
 }
