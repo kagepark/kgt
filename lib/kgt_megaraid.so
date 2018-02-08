@@ -1,0 +1,22 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+LDInfo() {
+./CmdTool2 -LDInfo -L0 -aALL
+./CmdTool2 -LDInfo -L1 -aALL
+}
+
+ADInfo() {
+./CmdTool2 -AdpAllInfo -aALL
+}
+
+PDInfo() {
+  ./CmdTool2 -PDGetNum -aALL
+./CmdTool2 -PDList -aALL
+}
+
+FWUpdate() {
+    ./CmdTool2 -AdpFwFlash -f SROMBSASMP2/MP2_1007.rom -a0
+}
