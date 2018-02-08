@@ -11,6 +11,7 @@ _ofed_help() {
        echo "  -i <image file> : display <image file> information"
        echo "  -backup <backup image path> : It need '-d' option"
        echo "  -b : Burn image to rom, It need '-d' and '-i' option"
+       echo "    -force : Force Burn Image to rom"
        exit
 }
 ofed() {
@@ -20,6 +21,7 @@ ofed() {
    fi
    fw_file=$(_k_opt -i 1 0 "$@")
    fw_dev=$(_k_opt -d 1 0 "$@")
+   _k_opt -force 0 0 "$@" >/dev/null && force_burn=1
    if backup_file=$(_k_opt -backup 1 0 "$@"); then
      if [ -f "$backup_file" ]; then
         echo "Already $backup_file exist"
@@ -34,7 +36,21 @@ ofed() {
      lspci -vv | grep -i mella
    elif _k_opt -b 0 0 "$@" >/dev/null; then
      if [ -n "$fw_file" -a -f "$fw_file" -a -n "$fw_dev" ]; then
-        mstflint -d $fw_dev -i $fw_file b
+        x=$(mstflint -i $fw_file q)
+        firmware_board_id=$(echo "$x" | grep PSID | awk '{print $2;}')
+        board_id=$(mstflint -d $fw_dev q | grep PSID | awk '{print $2;}')
+        if [ "$firmware_board_id" == "$board_id" ]; then
+            echo ""
+            echo "Burning firmware image ($fw_file) to $fw_dev (do not interrupt) ..."
+            echo ""
+            if [ "$force_burn" == "1" ]; then
+                echo n | mstflint -d $fw_dev -y -skip_is -i $fw_file burn
+            else
+                echo n | mstflint -d $fw_dev -i $fw_file burn
+            fi
+        else
+            error_exit "Mismatched board_id"
+        fi
      else
         _ofed_help
      fi
