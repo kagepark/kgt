@@ -3,3 +3,73 @@
 # Kage Park
 # License : GPL
 ####################################
+MLNX_HCA() {
+    local lid
+    lid=$([ -n "$1" ] && echo "-L $1")
+    if sminfo=$(sminfo $lid 2>/dev/null); then
+        sminfo_arr=($sminfo)
+        lid=${sminfo_arr[3]}
+        quid=${sminfo_arr[6]}
+        prio=${sminfo_arr[$((${#sminfo_arr[*]}-4))]}
+        stat=${sminfo_arr[$((${#sminfo_arr[*]}-1))]}
+        host=$(smpquery nd $lid | sed "s/\./ /g" | awk '{printf "%s(%s)", $3, $4}')
+        echo "$host : lid $lid quid $quid priority $prio state $stat"
+    fi
+}
+
+INTEL_HFI() {
+   opareport -x 2>/dev/null | opaxmlextract -e SMs.SM.SMState -e SMs.SM.PortNum -e SMs.SM.PortGUID -e SMs.SM.NodeDesc | grep -v "^SMs.SM.SMS" | while read line; do
+
+      state=$(echo $line | awk -F\; '{print $1}')
+      portid=$(echo $line | awk -F\; '{print $2}')
+      portguid=$(echo $line | awk -F\; '{print $3}')
+      desc=$(echo $line | awk -F\; '{print $4}')
+      lid=$(printf "%d" $(opareport -o nodes -x -F portguid:$portguid 2>/dev/null | opaxmlextract -e SMs.SM.LID| tail -n1))
+      if [ -n "$lid" ]; then
+        priority_arr=($(opasmaquery -o sminfo -l $lid 2>/dev/null | grep "^Priority" | awk '{printf "%d %d %d",$2,$5,$8}'))
+      fi
+      printf "%s port %d guid %s lid %3d priority (run:%2d, init:%2d, eval:%2d) : %s\n" "$desc" "$portid" "$portguid" "$lid" "${priority_arr[0]}" "${priority_arr[1]}" "${priority_arr[2]}" "$state"
+   done
+}
+
+sm() {
+ if [ "$1" == "--help" ]; then
+  echo "${FUNCNAME} all : Find all SM"
+  echo "${FUNCNAME}     : Find master SM"
+  exit
+ elif [ "$1" == "all" ]; then
+   if ls /sys/class/infiniband/mlx* >& /dev/null; then
+      if rpm -qi infiniband-diags >& /dev/null ; then
+          lids=$(ibnetdiscover | grep lid |awk '{print $5}'| sort -n | uniq)
+          for ii in $lids; do
+             MLNX_HCA $ii
+          done
+      else
+          echo "Found MLNX HCA card. but not found infiniband-diags rpm"
+      fi
+   fi
+   if ls /sys/class/infiniband/hfi* >& /dev/null; then
+      if rpm -qi opa-fastfabric >& /dev/null; then
+          INTEL_HFI
+      else
+          echo "Found HFI card. but not found opa-fastfabric rpm"
+      fi
+   fi
+ else
+   if ls /sys/class/infiniband/mlx* >& /dev/null; then
+      if rpm -qi infiniband-diags >& /dev/null ; then
+          MLNX_HCA
+      else
+          echo "Found MLNX HCA card. but not found infiniband-diags rpm"
+      fi
+   fi
+   if ls /sys/class/infiniband/hfi* >& /dev/null; then
+      if rpm -qi opa-fastfabric >& /dev/null; then
+          INTEL_HFI
+      else
+          echo "Found HFI card. but not found opa-fastfabric rpm"
+      fi
+   fi
+ fi
+
+}
