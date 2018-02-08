@@ -244,22 +244,22 @@ pingpong_run() {
     local file_path count hostfile
     file_path=$1
     hostfile=$2
-    hca_dev=$3
-    hca_port=$4
+    ib_dev=$3
+    ib_port=$4
     count=$5
     [ -n "$file_path" -a -d "$file_path" ] || error_exit "$file_path not found"
     [ -n "$hostfile" -a -f "$hostfile" ] || error_exit "$hostfile not found"
     [ -n "$count" ] || count=$(cat $hostfile| wc -l)
-    export VIADEV_DEVICE=$hca_dev
-    export VIADEV_DEFAULT_PORT=$hca_port
+    export VIADEV_DEVICE=$ib_dev
+    export VIADEV_DEFAULT_PORT=$ib_port
     cd $file_path
-    mpirun -np $count -hostfile $hostfile  ./pingpong
+    mpirun -np $count -hostfile $hostfile -iface ${ib_dev} ./pingpong
 }
 
 find_ib_bad() {
-  local file_path _hca_ping _port_ping hostname
+  local file_path _ib_ping _port_ping hostname
   file_path=$1
-  _hca_ping=$2
+  _ib_ping=$2
   _port_ping=$3
   _threshold=$4
   shift 4
@@ -276,12 +276,12 @@ find_ib_bad() {
   ########### do not touch ###############
 
   cd $file_path
-  export VIADEV_DEVICE=$_hca_ping
+  export VIADEV_DEVICE=$_ib_ping
   export VIADEV_DEFAULT_PORT=$_port_ping
   for hi in $(seq 0 $((${#hostname[*]} - 1)) ); do
    die=0
    if [ 0 -eq $hi ]; then
-       mpirun -np 2 -hosts ${hostname[0]},${hostname[$((${#hostname[*]} - 1))]} ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[0]},${hostname[$((${#hostname[*]} - 1))]}  -iface ${_ib_ping} ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
@@ -292,7 +292,7 @@ find_ib_bad() {
            echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
            echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       mpirun -np 2 -hosts ${hostname[0]},${hostname[1]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[0]},${hostname[1]} -iface ${_ib_ping}  ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
@@ -304,7 +304,7 @@ find_ib_bad() {
            echo "${hostname[0]} <<=====>> ${hostname[1]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
    elif [ $((${#hostname[*]} - 1)) -eq $hi ]; then
-       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi-1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi-1))]}  -iface ${_ib_ping} ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
@@ -315,7 +315,7 @@ find_ib_bad() {
            echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
            echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[0]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[0]}  -iface ${_ib_ping} ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
@@ -327,7 +327,7 @@ find_ib_bad() {
            echo "${hostname[$hi]} <<=====>> ${hostname[0]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
    else
-       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi - 1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi - 1))]}  -iface ${_ib_ping} ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
@@ -338,7 +338,7 @@ find_ib_bad() {
            echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
            echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi + 1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi + 1))]}  -iface ${_ib_ping} ./pingpong  >& /tmp/kgt_pingpong.log
        ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a $ping_log
@@ -361,8 +361,8 @@ pingpong() {
 
    share_dir=$(_k_opt -s 1 0 "$@")
    hosts=$(_k_opt -h 1 0 "$@") || hosts=$(_k_opt -g 1 0 "$@")
-   hca_dev=$(_k_opt -hca 1 0 "$@")
-   hca_port=$(_k_opt -p 1 0 "$@")
+   ib_dev=$(_k_opt -ib 1 0 "$@")
+   ib_port=$(_k_opt -p 1 0 "$@")
    host_count=$(_k_opt -c 1 0 "$@")
    loop_num=$(_k_opt -l 1 0 "$@")
    unit_num=$(_k_opt -u 1 0 "$@")
@@ -373,12 +373,12 @@ pingpong() {
      echo 
      echo "<options>"
      echo "  -s <share dir>       : default /global"
-     echo "  -hca <hca dev name> "
-     echo "     -p <hca port>     : Default 1"
+     echo "  -ib <IB dev name>    : default ib0"
+     echo "     -p <IB port>      : Default 1"
      echo "  -l <loop#>           : default 1"
      echo "  -u <pingpong unit>   : Testing group unit, default 30 nodes"
      echo "  -find                : Find low speed"
-     echo "     -f <filter num>   : Fileter value, default 110 MBS"
+     echo "     -f <filter num>   : Fileter value, default 1100 MBS"
      echo "  -mt <mpi app>        : Select MPI App(mpich,intel,mvapich,openmpi), default mpich"
      echo 
      echo " * Not support intel mpi, mvapich, openmpi yet"
@@ -388,15 +388,18 @@ pingpong() {
    host_list=($(_k_make_hostname $@))
 
    [ -n "$share_dir" ] || share_dir=/global
-   [ -n "$hca_dev" ] || hca_dev=$(basename $(ls -d /sys/class/infiniband/mlx* | head -n1))
-   [ -n "$hca_port" ] || hca_port=$(ls /sys/class/infiniband/$hca_dev/ports/ | head -n 1)
+   #[ -n "$ib_dev" ] || ib_dev=$(basename $(ls -d /sys/class/infiniband/mlx* | head -n1))
+   [ -n "$ib_dev" ] || ib_dev=ib0
+   if [ "$ib_dev" != "ib0" ]; then
+       [ -n "$ib_port" ] || ib_port=$(ls /sys/class/infiniband/$ib_dev/ports/ | head -n 1)
+   fi
    hostfile=$share_dir/hostfile
    [ -n "$host_count" ] || host_count=${#host_list[*]}
    [ -n "$loop_num" ] || loop_num=1
    [ -n "$unit_num" ] || unit_num=30
    if [ "$find_ib_bad" == "1" ]; then
       filter_num=$(_k_opt -f 1 0 "$@")
-      [ -n "$filter_num" ] || filter_num=110
+      [ -n "$filter_num" ] || filter_num=1100
    fi
 
    pingpong_file $share_dir
@@ -410,7 +413,7 @@ pingpong() {
            echo "** Start at $date_str" >> /tmp/$fff
        done
        echo "Filter value : $filter_num MBS" >> /tmp/kgt_pingpong_bad.log
-       find_ib_bad $share_dir $hca_dev $hca_port $filter_num ${host_list[*]}
+       find_ib_bad $share_dir $ib_dev $ib_port $filter_num ${host_list[*]}
      else
        if (( $host_count > $unit_num )); then
          for ((ii=0; ii<$(($((${host_count}/$unit_num))+1)); ii++)); do
@@ -422,11 +425,11 @@ pingpong() {
              echo "${host_list[$jj]}" >> $hostfile
            done
            host_count_cur=$(cat $hostfile|wc -l)
-           pingpong_run $share_dir $hostfile $hca_dev $hca_port $host_count_cur
+           pingpong_run $share_dir $hostfile $ib_dev $ib_port $host_count_cur
          done
        else
          echo "${host_list[*]}" | sed "s/ /\n/g" > $hostfile
-         pingpong_run $share_dir $hostfile $hca_dev $hca_port $host_count
+         pingpong_run $share_dir $hostfile $ib_dev $ib_port $host_count
        fi
      fi
    done
