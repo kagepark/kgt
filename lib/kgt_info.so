@@ -70,6 +70,18 @@ node_info() {
          printf "%18s - %-8s : %s\n" "" "Rate" "$(cat /sys/class/infiniband/$ibn/ports/$port/rate)"
       done
   done
+
+  #memory
+  mem_info=$(dmidecode -t memory)
+  while read line; do
+      locator=$(echo $line | grep "^Locator:" >& /dev/null && echo $line | awk '{print $2}')
+      size=$(echo $line | grep "^Size:" >& /dev/null && echo $line | awk '{print $2 $3}')
+      model=$(echo $line | grep "^Manufacturer:" >& /dev/null && echo $line | awk '{print $2}')
+      SN=$(echo $line | grep "^erial Number:" >& /dev/null && echo $line | awk '{print $3}')
+      if echo $line | grep "^Rank:" >& /dev/null; then
+         echo "$locator : $size $([ -n "$size" ] && echo "$size $model $SN")"
+      fi
+  done < <(echo "$mem_info")
 }
 
 info() {
