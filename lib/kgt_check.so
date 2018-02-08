@@ -6,6 +6,7 @@
 
 
 check() {
+  _k_root
   RSH_STR="ssh -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no "
   if [ "$KGT_MODE" == "xcat" ]; then
      RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
