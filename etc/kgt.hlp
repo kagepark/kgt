@@ -10,3 +10,4 @@ ipmi       # power handle with IPMI (It need <hostname>-ipmi hostname for IPMI I
 dhcp_ip    # Find DHCP IP from mac
 sm         # Find OpenSM 
 ofed       # Handle OFED
+pingpong   # Testing Pingpong

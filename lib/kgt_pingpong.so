@@ -4,6 +4,8 @@
 # License : GPL
 ####################################
 pingpong_file()  {
+    local file_path=$1
+    [ -n "$file_path" -a -d "$file_path" ] || error_exit "Can not found $file_path"
     cat << EOF > /tmp/pingpong.c
 /* Each Process Ping-Pongs With Every Other Process - Done One Pair at a Time
       Parameters:
@@ -34,19 +36,21 @@ int main(int argc, char *argv[])
     int            nproc;                /* Total number of MPI processes       */
     int            tag0=41;              /* MPI message tag                     */
     int            tag1=42;              /* MPI message tag                     */
-    int            tag2=43;              /* MPI message tag                     */
+//    int            tag2=43;              /* MPI message tag                     */
     int            warmup=0;             /* MPI warmup loops                    */
     char           process_name[MPI_MAX_PROCESSOR_NAME + 1];
     char           partner_name[MPI_MAX_PROCESSOR_NAME + 1];
-    char           qsc_blank[] = {"       "};
+//    char           qsc_blank[] = {"       "};
     char           qsc_empty[] = {"???????"};
     int            n_bytes = 4194304 * 2, maxBytes;
     int            n_loops = 50, d_loops;
     unsigned char* send_buff;
     unsigned char* recv_buff;
     int		   useClock = TRUE;
-    int            i,j,k,m,count,mismatch;
+    int            i,j,k,count,mismatch;
     double         et1,et2,mbs;
+    et1 = 0.0;
+    et2 = 0.0;
 
     /* GET INPUT PARAMETERS: ONLY THE LAST TWO ARE MINE */
     if (argc >= 3) {
@@ -233,107 +237,180 @@ int main(int argc, char *argv[])
 }
 EOF
 
-  mpicc /tmp/pingpong.c -o /tmp/pingpong
+  mpicc /tmp/pingpong.c -o ${file_path}/pingpong
 }
 
 pingpong_run() {
-    export VIADEV_DEVICE=mlx4_0
-    export VIADEV_DEFAULT_PORT=1
-    mpirun -np $count -hostfile aaa  ./pingpong
+    local file_path count hostfile
+    file_path=$1
+    hostfile=$2
+    hca_dev=$3
+    hca_port=$4
+    count=$5
+    [ -n "$file_path" -a -d "$file_path" ] || error_exit "$file_path not found"
+    [ -n "$hostfile" -a -f "$hostfile" ] || error_exit "$hostfile not found"
+    [ -n "$count" ] || count=$(cat $hostfile| wc -l)
+    export VIADEV_DEVICE=$hca_dev
+    export VIADEV_DEFAULT_PORT=$hca_port
+    cd $file_path
+    mpirun -np $count -hostfile $hostfile  ./pingpong
 }
 
 find_ib_bad() {
-hostname=( $_hosts )
+  local file_path _hca_ping _port_ping hostname
+  file_path=$1
+  _hca_ping=$2
+  _port_ping=$3
+  _threshold=$4
+  shift 4
+  hostname=( $* )
 
-if (( ${#hostname[*]} < 3 )); then
-  echo "It need more 3 nodes"
-  exit
-fi
+  if (( ${#hostname[*]} < 3 )); then
+    echo "It need more 3 nodes"
+    exit
+  fi
 
-echo
-echo "Total ${#hostname[*]} nodes"
-echo
-########### do not touch ###############
+  echo
+  echo "Total ${#hostname[*]} nodes"
+  echo
+  ########### do not touch ###############
 
-#cd /opt/ace/tools/pingpong/SIMPLETEST/
-cd $_K_TOOL/pingpong/SIMPLETEST/
-for hi in $(seq 0 $((${#hostname[*]} - 1)) ); do
+  cd $file_path
+  export VIADEV_DEVICE=$_hca_ping
+  export VIADEV_DEFAULT_PORT=$_port_ping
+  for hi in $(seq 0 $((${#hostname[*]} - 1)) ); do
    die=0
    if [ 0 -eq $hi ]; then
-       $MPIRUN -np 2 ${hostname[0]} ${hostname[$((${#hostname[*]} - 1))]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong  >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[0]},${hostname[$((${#hostname[*]} - 1))]} ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
-           echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> $bad_node_log || echo "${ping[*]}" >>  $good_node_log
+           echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >>  /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[0]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" | tee -a $ping_log
-           echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" >> $bad_node_log
+           echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[0]} <<=====>> ${hostname[$((${#hostname[*]} - 1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       $MPIRUN -np 2 ${hostname[0]} ${hostname[1]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong  >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[0]},${hostname[1]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
-           echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >>  $bad_node_log || echo "${ping[*]}" >> $good_node_log
+           echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >>  /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >> /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[0]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[0]} <<=====>> ${hostname[1]} : no connection" | tee -a $ping_log
-           echo "${hostname[0]} <<=====>> ${hostname[1]} : no connection" >> $bad_node_log
+           echo "${hostname[0]} <<=====>> ${hostname[1]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[0]} <<=====>> ${hostname[1]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
    elif [ $((${#hostname[*]} - 1)) -eq $hi ]; then
-       $MPIRUN -np 2 ${hostname[$hi]} ${hostname[$(($hi-1))]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong  >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi-1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
-           echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> $bad_node_log || echo "${ping[*]}" >> $good_node_log
+           echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >> /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[$hi]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" | tee -a $ping_log
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" >> $bad_node_log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi-1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       $MPIRUN -np 2 ${hostname[$hi]} ${hostname[0]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong  >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[0]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
-           echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> $bad_node_log || echo "${ping[*]}" >> $good_node_log
+           echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >> /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[$hi]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[$hi]} <<=====>> ${hostname[0]} : no connection" | tee -a $ping_log
-           echo "${hostname[$hi]} <<=====>> ${hostname[0]} : no connection" >> $bad_node_log
+           echo "${hostname[$hi]} <<=====>> ${hostname[0]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[$hi]} <<=====>> ${hostname[0]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
    else
-       $MPIRUN -np 2 ${hostname[$hi]} ${hostname[$(($hi - 1))]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi - 1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
-           echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> $bad_node_log || echo "${ping[*]}" >> $good_node_log
+           echo "${ping[*]}" | tee -a /tmp/kgt_pingpong.log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >> /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[$hi]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" | tee -a $ping_log
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" >> $bad_node_log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
-       $MPIRUN -np 2 ${hostname[$hi]} ${hostname[$(($hi + 1))]} VIADEV_DEVICE=$_hca_ping VIADEV_DEFAULT_PORT=$_port_ping ./pingpong >& $tmp_log
-       ping=( $(cat $tmp_log | grep "<<=====>>") )
+       mpirun -np 2 -hosts ${hostname[$hi]},${hostname[$(($hi + 1))]}  ./pingpong  >& /tmp/kgt_pingpong.log
+       ping=( $(cat /tmp/kgt_pingpong.log | grep "<<=====>>") )
        if [ -n "${ping[3]}" ]; then
            echo "${ping[*]}" | tee -a $ping_log
-           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> $bad_node_log || echo "${ping[*]}" >> $good_node_log
+           (( ${ping[3]} <= $_threshold )) && echo "${ping[*]}" >> /tmp/kgt_pingpong_bad.log || echo "${ping[*]}" >> /tmp/kgt_pingpong_good.log
        else
            die=$(($die + 1))
            kill -9 $(echo $(ps -ef |grep "${hostname[$hi]}" | grep mpispawn | grep -v grep | awk '{print $2}'))
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" | tee -a $ping_log
-           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" >> $bad_node_log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" | tee -a /tmp/kgt_pingpong.log
+           echo "${hostname[$hi]} <<=====>> ${hostname[$(($hi - 1))]} : no connection" >> /tmp/kgt_pingpong_bad.log
        fi
    fi
-   (( $die == 2 )) && echo "${hostname[$hi]}" >> $die_node_log
-done
+   (( $die == 2 )) && echo "${hostname[$hi]}" >> /tmp/kgt_pingpong_die.log
+  done
 }
 
 
 pingpong() {
-    
+   [ -n "$(whereis mpicc | awk -F: '{print $2}')" ] || error_exit "mpicc not found, Please install MPI App or load environment(ex: module load mpich)"
+   [ -n "$(whereis mpirun | awk -F: '{print $2}')" ] || error_exit "mpirun not found, Please install MPI App or load environment(ex: module load mpich)"
+
+   share_dir=$(_k_opt -s 1 0 "$@")
+   hosts=$(_k_opt -h 1 0 "$@") || hosts=$(_k_opt -g 1 0 "$@")
+   hca_dev=$(_k_opt -hca 1 0 "$@")
+   hca_port=$(_k_opt -p 1 0 "$@")
+   host_count=$(_k_opt -c 1 0 "$@")
+   loop_num=$(_k_opt -l 1 0 "$@")
+   unit_num=$(_k_opt -u 1 0 "$@")
+   _k_opt -find 0 0 "$@" >& /dev/null && find_ib_bad=1
+   [ -n "$hosts" ] || error_exit "${FUNCNAME} <-h <hostname> or -g <group name>> [-s <share dir:/global>] [-hca <hca dev name>] [-p <hca port>] [-l <loop#>] [-u <pingpong unit:30> [-find [-f <filter num:110>]]"
+
+   host_list=($(_k_make_hostname $@))
+
+   [ -n "$share_dir" ] || share_dir=/global
+   [ -n "$hca_dev" ] || hca_dev=$(basename $(ls -d /sys/class/infiniband/mlx* | head -n1))
+   [ -n "$hca_port" ] || hca_port=$(ls /sys/class/infiniband/$hca_dev/ports/ | head -n 1)
+   hostfile=$share_dir/hostfile
+   [ -n "$host_count" ] || host_count=${#host_list[*]}
+   [ -n "$loop_num" ] || loop_num=1
+   [ -n "$unit_num" ] || unit_num=30
+   if [ "$find_ib_bad" == "1" ]; then
+      filter_num=$(_k_opt -f 1 0 "$@")
+      [ -n "$filter_num" ] || filter_num=110
+   fi
+
+   pingpong_file $share_dir
+   for (( lloop=1 ; lloop <= $loop_num; lloop++)); do
+     echo
+     echo "** Run pingpong : ${lloop}/${loop_num}"
+     if [ "$find_ib_bad" == "1" ]; then
+       (( $host_count < 3 )) && error_exit "it need minimum 3 hosts"
+       date_str=$(date)
+       for fff in kgt_pingpong_bad.log kgt_pingpong_good.log kgt_pingpong_die.log; do
+           echo "** Start at $date_str" >> $fff
+       done
+       find_ib_bad $share_dir $hca_dev $hca_port $filter_num ${host_list[*]}
+     else
+       if (( $host_count > $unit_num )); then
+         for ((ii=0; ii<$(($((${host_count}/$unit_num))+1)); ii++)); do
+           start=$(($ii*$unit_num))
+           end=$(($(($ii+1))*$unit_num))
+           (($end > ${host_count})) && end=${host_count}
+           rm -f $hostfile
+           for ((jj=$start; jj<$end; jj++)); do
+             echo "${host_list[$jj]}" >> $hostfile
+           done
+           host_count_cur=$(cat $hostfile|wc -l)
+           pingpong_run $share_dir $hostfile $hca_dev $hca_port $host_count_cur
+         done
+       else
+         echo "${host_list[*]}" | sed "s/ /\n/g" > $hostfile
+         pingpong_run $share_dir $hostfile $hca_dev $hca_port $host_count
+       fi
+     fi
+   done
 }
