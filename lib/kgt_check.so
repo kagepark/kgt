@@ -41,11 +41,11 @@ check() {
        socketnum=\$(echo \"\$lscpuinfo\" | grep \"^Socket\" | awk '{print \$2}')
        corenum=\$(echo \"\$lscpuinfo\" | grep \"^Core(s)\" | awk '{print \$4}')
        hzdrv=\$(echo \"\$cpupower\" | grep \"driver:\" | awk '{print \$2}')
-       hzcur_unit=\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | awk '{print \$5}')
+       hzcur_unit=\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | grep -v \"Unable to call hardware\" | awk '{print \$5}')
        if [ \"\$hzcur_unit\" == \"MHz\" ]; then
-         hzcur=\$(printf \"%4.2f\" \$((\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | awk '{print \$4}')/1000)))
+         hzcur=\$(printf \"%4.2f\" \$((\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | grep -v \"Unable to call hardware\" | awk '{print \$4}')/1000)))
        else
-         hzcur=\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | awk '{print \$4}')
+         hzcur=\$(echo \"\$cpupower\" | grep \"current CPU frequency:\" | grep -v \"Unable to call hardware\" | awk '{print \$4}')
        fi
        hzmax=\$(echo \"\$cpupower\" | grep \"hardware limits:\" | awk '{print \$6}')
        hz=\"\${hzdrv}(\${hzcur}/\${hzmax})\"
