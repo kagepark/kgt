@@ -3,3 +3,6 @@
 # Kage Park
 # License : GPL
 ####################################
+bios() {
+   _k_root
+}

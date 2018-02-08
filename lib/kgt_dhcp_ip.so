@@ -11,7 +11,7 @@ dhcp_ip() {
    fi
 
    dhcp_tmp=/var/lib/dhcpd/dhcpd.leases
-
+   [ -f $dhcp_tmp ] || error_exit "DHCP not ready"
 
    cat $dhcp_tmp | while read line; do
       if echo $line | grep "^lease " >& /dev/null; then

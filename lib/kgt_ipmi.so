@@ -5,6 +5,7 @@
 ####################################
 
 ipmi() {
+  _k_root
   if [ "$#" == "0" ]; then
       echo "${FUNCNAME} <command> <opt>"
       echo ""

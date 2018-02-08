@@ -41,7 +41,12 @@ _help() {
     exit
 }
 
+_k_root() {
+   [ "$(id -u)" == "0" ] || error_exit "Not root account"
+}
+
 _setup() {
+    _k_root
     echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
     echo "Please run \"source /etc/profile.d/kgt.sh\""
     exit
