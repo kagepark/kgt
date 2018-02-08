@@ -8,10 +8,8 @@ cpu_temp() {
        lsmod |grep coretemp >& /dev/null || modprobe coretemp
        if [ -f /sys/bus/platform/devices/coretemp.0/hwmon/hwmon*/temp1_input ]; then
           for ii in $(ls -d /sys/bus/platform/devices/coretemp.*); do
-             #id=$(($(echo $ii | cut -d . -f2) + 1 ))
-             #temp=$([ -f $ii/hwmon/hwmon${id}/temp1_input ] && cat $ii/hwmon/hwmon${id}/temp1_input)
              temp=$([ -f $ii/hwmon/hwmon*/temp1_input ] && cat $ii/hwmon/hwmon*/temp1_input)
-             [ -n "$temp" ] && printf "%5.1f " $(bc -l <<< "$temp / 1000")
+             [ -n "$temp" ] && printf "%5.1f " $(bc -l <<< "$temp / 1000") || echo "CPU Temperature file not found"
           done
        elif [ -f /usr/bin/sensors ]; then
           sensors | grep "^Physical id" | awk '{print $4}'
