@@ -379,7 +379,7 @@ pingpong() {
      echo "  -u <pingpong unit>   : Testing group unit, default 30 nodes"
      echo "  -find                : Find low speed"
      echo "     -f <filter num>   : Fileter value, default 110 MBS"
-     echo "  -mt <mpi app>        : Select MPI App(mpi,intel,mvapich,openmpi), default mpi"
+     echo "  -mt <mpi app>        : Select MPI App(mpich,intel,mvapich,openmpi), default mpich"
      echo 
      echo " * Not support intel mpi, mvapich, openmpi yet"
      exit
