@@ -11,6 +11,7 @@
 # get some functions from Kage old shell functions
 # and remake inteligent shell with mixed old kage shells
 _KGT_VERSION=2.1.12
+Ttag=gt
 
 error_exit() {
     echo $*
@@ -46,6 +47,7 @@ _setup() {
     exit
 }
 
+gt() {
 if [ "$#" == "0" ]; then
   cat $_KGT_HOME/etc/kgt.hlp
   exit
@@ -63,7 +65,7 @@ elif [ "$cmd" == "setup" -o "$cmd" == "--setup" ]; then
 else
    for cmdname in $cmd_str; do
       if [ "$cmd" == "$cmdname" ]; then
-          _k_load gt_$cmd || break
+          _k_load ${FUNCNAME}_$cmd || break
           shift 1
           trap '' 2
           $cmd "${@}"
@@ -72,4 +74,16 @@ else
       fi
    done
    echo "Unknown command ($cmd)"
+fi
+}
+
+if [ "$(basename "$0")" == "${tag}${Ttag}" ]; then
+#!/bin/bash
+    ${Ttag} "$@" || exit $?
+else
+    # Loading this script like as shared library
+    g_k_func="_k_load error_exit"
+    for ii in $g_k_func; do
+        export -f $ii
+    done
 fi
