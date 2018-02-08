@@ -27,7 +27,7 @@ tag=k
 
 
 _help() {
-    echo "Usage: $(basename $0) command <hostname> [<arg1> ....]"
+    echo "Usage: $(basename $0) <command> <hostname> [<arg1> ....]"
     echo 
     echo " <hostname>"
     echo "  -g <group name>"
