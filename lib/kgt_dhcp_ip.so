@@ -1,0 +1,41 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+dhcp_ip() {
+   mac=$(echo $1 | tr '[:upper:]' '[:lower:]')
+   if [ ! -n "$mac" ]; then
+      echo "${FUNCNAME} <mac>"
+      exit
+   fi
+
+   dhcp_tmp=/var/lib/dhcpd/dhcpd.leases
+
+
+   cat $dhcp_tmp | while read line; do
+      if echo $line | grep "^lease " >& /dev/null; then
+         tmp_ip=$(echo $line | awk '{print $2}')
+      elif echo $line | grep "^host " >& /dev/null; then
+         tmp_ip="fixed-address"
+      elif echo "$line" | grep "^}$"  >& /dev/null; then
+         tmp_ip=""
+      else
+         echo $line | grep "hardware " >& /dev/null && tmp_mac=$(echo $line | awk '{print $3}' | sed 's/;//g')
+         if [ "$tmp_mac" == "$mac" ]; then
+            if [ "$tmp_ip" == "fixed-address" ]; then
+               if echo $line | grep "fixed-address " >& /dev/null; then
+                    tmp_ip=$(echo $line | awk '{if($1=="fixed-address") print $2}' | sed "s/;//g")
+               fi
+               if [ -n "$tmp_ip" -a "$tmp_ip" != "fixed-address" ]; then
+                  echo $tmp_ip
+                  break
+               fi
+            elif [ -n "$tmp_ip" -a "$tmp_ip" != "fixed-address" ]; then
+               echo $tmp_ip
+               break
+            fi
+         fi
+      fi
+   done
+}
