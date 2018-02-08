@@ -391,8 +391,9 @@ pingpong() {
        (( $host_count < 3 )) && error_exit "it need minimum 3 hosts"
        date_str=$(date)
        for fff in kgt_pingpong_bad.log kgt_pingpong_good.log kgt_pingpong_die.log; do
-           echo "** Start at $date_str" >> $fff
+           echo "** Start at $date_str" >> /tmp/$fff
        done
+       echo "Filter value : $filter_num MBS" >> /tmp/kgt_pingpong_bad.log
        find_ib_bad $share_dir $hca_dev $hca_port $filter_num ${host_list[*]}
      else
        if (( $host_count > $unit_num )); then
