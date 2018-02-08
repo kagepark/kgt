@@ -28,6 +28,29 @@ node_info() {
   printf "%17s : %-s\n" "HT"  "$( (( $hyper > 1 )) && echo on || echo off)"
   printf "%17s : %-s\n" "GHz" "$hz"
   printf "%17s : %-6.1f\n" "Mem(G)" "$(bc -l <<< $(grep "^MemTotal" /proc/meminfo  | awk '{print $2}')/$((1024*1024)))"
+  #memory
+  mem_info=$(dmidecode -t memory)
+  while read line; do
+      if echo $line | grep "^Locator:" >& /dev/null ; then
+         locator=$(echo $line | awk '{print $2}')
+      elif echo $line | grep "^Size:" >& /dev/null; then
+         size=$(echo $line | awk '{print $2 $3}')
+      elif echo $line | grep "^Manufacturer:" >& /dev/null; then
+         model=$(echo $line | awk '{print $2}')
+      elif echo $line | grep "^Serial Number:" >& /dev/null; then
+         SN=$(echo $line | awk '{print $3}')
+      elif echo $line | grep "^Speed:" >& /dev/null; then
+         speed=$(echo $line | awk '{print $2 $3}')
+      elif echo $line | grep "^Rank:" >& /dev/null; then
+         printf "%17s" "" 
+         echo "$locator : $([ "$size" == "NoModule" ] && echo "-" || echo "$model $size ($SN/$speed)")"
+         locator=""
+         size=""
+         model=""
+         SN=""
+      fi
+  done < <(echo "$mem_info")
+
   printf "%17s : %-s\n" "NTP" $(ps -ef |grep ntpd | grep -v grep >& /dev/null && echo Run || echo "-")
   printf "%17s : %-s\n" "NIC" $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo" | wc -l)
   for nic in $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo"); do
@@ -71,17 +94,6 @@ node_info() {
       done
   done
 
-  #memory
-  mem_info=$(dmidecode -t memory)
-  while read line; do
-      locator=$(echo $line | grep "^Locator:" >& /dev/null && echo $line | awk '{print $2}')
-      size=$(echo $line | grep "^Size:" >& /dev/null && echo $line | awk '{print $2 $3}')
-      model=$(echo $line | grep "^Manufacturer:" >& /dev/null && echo $line | awk '{print $2}')
-      SN=$(echo $line | grep "^erial Number:" >& /dev/null && echo $line | awk '{print $3}')
-      if echo $line | grep "^Rank:" >& /dev/null; then
-         echo "$locator : $size $([ -n "$size" ] && echo "$size $model $SN")"
-      fi
-  done < <(echo "$mem_info")
 }
 
 info() {
