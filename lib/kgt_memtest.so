@@ -1,0 +1,20 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+memtest() {
+cd <logDir>
+cd <test dir>
+ln -s <memtest bin> 
+[ "$cpus" == "full" -o ! -n "$cpu" ] && cpus=$(cat /proc/cpuinfo | grep processor | wc -l)
+memtm=$(( $(cat /proc/meminfo | grep -w "MemTotal:" | awk '{print $2}')/1024 ))
+memam=$(( $(cat /proc/meminfo | grep -w "Active:" | awk '{print $2}')/1024 ))
+memfm=$(( $memtm - $memam ))
+memrm=$(( $(( $memfm * $mem )) / 100 ))
+memrunm=$(( $memrm / $cpus ))
+
+for i in $(seq 1 $cpus); do
+   ./memtester  ${memrunm}M   $loop  > memtester.${i}.log 2>&1 &
+done
+}
