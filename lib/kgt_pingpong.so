@@ -278,6 +278,7 @@ find_ib_bad() {
   cd $file_path
   export VIADEV_DEVICE=$_ib_ping
   export VIADEV_DEFAULT_PORT=$_port_ping
+
   for hi in $(seq 0 $((${#hostname[*]} - 1)) ); do
    die=0
    if [ 0 -eq $hi ]; then
@@ -390,7 +391,9 @@ pingpong() {
    [ -n "$share_dir" ] || share_dir=/global
    #[ -n "$ib_dev" ] || ib_dev=$(basename $(ls -d /sys/class/infiniband/mlx* | head -n1))
    [ -n "$ib_dev" ] || ib_dev=ib0
-   if [ "$ib_dev" != "ib0" ]; then
+   if [ "$ib_dev" == "ib0" ]; then
+       ib_port=1
+   else
        [ -n "$ib_port" ] || ib_port=$(ls /sys/class/infiniband/$ib_dev/ports/ | head -n 1)
    fi
    hostfile=$share_dir/hostfile
@@ -413,7 +416,7 @@ pingpong() {
            echo "** Start at $date_str" >> /tmp/$fff
        done
        echo "Filter value : $filter_num MBS" >> /tmp/kgt_pingpong_bad.log
-       find_ib_bad $share_dir $ib_dev $ib_port $filter_num ${host_list[*]}
+       find_ib_bad "$share_dir" "$ib_dev" "$ib_port" "$filter_num" ${host_list[*]}
      else
        if (( $host_count > $unit_num )); then
          for ((ii=0; ii<$(($((${host_count}/$unit_num))+1)); ii++)); do
@@ -425,11 +428,11 @@ pingpong() {
              echo "${host_list[$jj]}" >> $hostfile
            done
            host_count_cur=$(cat $hostfile|wc -l)
-           pingpong_run $share_dir $hostfile $ib_dev $ib_port $host_count_cur
+           pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count_cur"
          done
        else
          echo "${host_list[*]}" | sed "s/ /\n/g" > $hostfile
-         pingpong_run $share_dir $hostfile $ib_dev $ib_port $host_count
+         pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count"
        fi
      fi
    done
