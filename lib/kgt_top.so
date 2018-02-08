@@ -38,7 +38,7 @@ top() {
      RSH_STR="pdsh "
      shift 1
   else
-     RSH_STR="ssh -o ConnectTimeout=5 "
+     RSH_STR="ssh -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no "
      RSH_CMD=ssh
   fi
   if [ "$KGT_MODE" == "xcat" ]; then
