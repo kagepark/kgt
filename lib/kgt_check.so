@@ -61,7 +61,7 @@ check() {
        printf \"%7s \" \$(mountpoint /global >& /dev/null && echo OK || echo \"-\")
        printf \"%5s \" \$(mountpoint /home >& /dev/null && echo OK || echo \"-\")
        printf \"%3s \" \$(ls /sys/class/net/ | grep -v -e "^ib" -e "lo" | wc -l)
-       printf \"%3s \" \$(ls /sys/block/ | grep -v \"dm-\" | wc -l)
+       printf \"%3s \" \$(ls /sys/block/ | grep -v -e \"dm-\" -e \"loop\" | wc -l)
        printf \"%4s \" \$([ -c /dev/ipmi0 ] && echo On || echo \"-\")
        printf \"%6s \" \$([ -f /usr/bin/ipmitool ] && ipmitool mc info | grep \"^Firmware Revision\" | awk '{print \$4}' || echo \"x\")
        #printf \"%5s \" \$(dmidecode -s bios-version)
