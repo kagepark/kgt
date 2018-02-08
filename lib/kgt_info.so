@@ -72,6 +72,7 @@ node_info() {
       printf "%16s - %-10s : %s\n" "" "Path" "$(cat /sys/block/$hdd/dev)"
       printf "%16s - %-10s : %s\n" "" "Model" "$(cat /sys/block/$hdd/device/model)"
       printf "%16s - %-10s : %s\n" "" "Size" $(fdisk -l /dev/$hdd | grep "^Disk /dev" | awk '{print $3 $4}' | sed "s/,//g")
+      [ -f /usr/sbin/smartctl ] && printf "%16s - %-10s : %s\n" "" "Temp(*C)" "$(smartctl -A /dev/$hdd | grep Temperature_Celsius | awk '{print $10}')"
       printf "%16s - %-10s : %s\n" "" "S/N" "$(awk '{print $1}' /sys/block/$hdd/device/serial)"
       printf "%16s - %-10s : %s\n" "" "Firmware" "$(cat /sys/block/$hdd/device/firmware_rev)"
   done
@@ -87,6 +88,7 @@ node_info() {
       fi
       printf "%16s - %-10s : %s\n" "" "Firmware" "$([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")"
       printf "%16s - %-10s : %s\n" "" "BoardID" "$([ -f /sys/class/infiniband/$ibn/board_id ] && cat /sys/class/infiniband/$ibn/board_id || echo "-")"
+      printf "%16s - %-10s : %s\n" "" "Device" "$(basename $(readlink -f /sys/class/infiniband/$ibn/device) | sed "s/^0000://g")"
       for port in $(ls /sys/class/infiniband/$ibn/ports); do
          printf "%16s + %-10s : %s\n" "" "Port" $port
          printf "%18s - %-8s : %s\n" "" "State" "$(cat /sys/class/infiniband/$ibn/ports/$port/state | awk '{print $2}')"
