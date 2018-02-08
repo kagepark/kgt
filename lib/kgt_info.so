@@ -22,6 +22,8 @@ node_info() {
   hyper=$(echo "$lscpuinfo" | grep "^Thread(s) per core" | awk '{print $4}')
 
   printf "%17s : %-s\n" "Hostname" "$(hostname)"
+  printf "%17s : %-s\n" "OS" "$([ -f /etc/redhat-release ] && cat /etc/redhat-release)"
+  printf "%17s : %-s\n" "Kernel" "$(uname -a)"
   printf "%17s : %-s\n" "M/B" $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-")
   printf "%17s : %-s\n" "BIOSv" $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-")
   printf "%17s : %-s\n" "CPUs" "${cpunum}(${corenum}*${socketnum})"
