@@ -4,7 +4,10 @@
 # License : GPL
 ####################################
 pingpong_file()  {
-    local file_path=$1
+    local  file_path mpi_type
+    file_path=$1
+    mpi_type=$2
+    kgt_mpi=$3
     [ -n "$file_path" -a -d "$file_path" ] || error_exit "Can not found $file_path"
     cat << EOF > /tmp/pingpong.c
 /* Each Process Ping-Pongs With Every Other Process - Done One Pair at a Time
@@ -237,8 +240,10 @@ int main(int argc, char *argv[])
 }
 EOF
 
+  [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
   mpicc /tmp/pingpong.c -o ${file_path}/pingpong
   rm -f /tmp/pingpong.c
+  [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
 }
 
 pingpong_run() {
@@ -249,10 +254,12 @@ pingpong_run() {
     ib_port=$4
     count=$5
     mpi_type=$6
+    kgt_mpi=$7
 
     [ -n "$file_path" -a -d "$file_path" ] || error_exit "$file_path not found"
     [ -n "$hostfile" -a -f "$hostfile" ] || error_exit "$hostfile not found"
     [ -n "$count" ] || count=$(cat $hostfile| wc -l)
+    [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
     if [ "$mpi_type" == "mpich" ]; then
        if [ "$ib_dev" == "ib0" -o "$ib_dev" == "ib1" ]; then
           ib_opt="-iface ${ib_dev}" 
@@ -269,6 +276,7 @@ pingpong_run() {
     fi
     cd $file_path
     $MPIRUN -np $count -hostfile $hostfile $ib_opt ./pingpong
+    [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
 }
 
 find_ib_bad() {
@@ -278,7 +286,8 @@ find_ib_bad() {
   _port_ping=$3
   _threshold=$4
   mpi_type=$5
-  shift 5
+  kgt_mpi=$6
+  shift 6
   hostname=( $* )
 
   if (( ${#hostname[*]} < 3 )); then
@@ -286,6 +295,7 @@ find_ib_bad() {
     exit
   fi
 
+  [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
   if [ "$mpi_type" == "mpich" ]; then
      if [ "$ib_dev" == "ib0" -o "$ib_dev" == "ib1" ]; then
        ib_opt="-iface ${_ib_ping}"
@@ -382,6 +392,7 @@ find_ib_bad() {
    fi
    (( $die == 2 )) && echo "${hostname[$hi]}" >> /tmp/kgt_pingpong_die.log
   done
+  [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
 }
 
 _pingpong_help() {
@@ -396,6 +407,7 @@ _pingpong_help() {
      echo "  -find                : Find low speed"
      echo "     -f <filter num>   : Fileter value, default 1100 MBS"
      echo "  -mt <mpi app>        : Select MPI App(mpich,intel,mvapich,openmpi), default mpich"
+     echo "     -kgt              : using MPI App of KGT packages (mpich,mvapich)
      echo
      echo " * Not support mlx4_0,mlx5_0,..."
      echo " * Not support intel mpi, mvapich, openmpi yet"
@@ -415,6 +427,7 @@ pingpong() {
    loop_num=$(_k_opt -l 1 0 "$@")
    unit_num=$(_k_opt -u 1 0 "$@")
    mpi_type=$(_k_opt -mt 1 0 "$@")
+   _k_opt -kgt 0 0 "$@" && kgt_mpi=1
    _k_opt -find 0 0 "$@" >& /dev/null && find_ib_bad=1
    if [ ! -n "$hosts" ]; then
       _pingpong_help
@@ -440,7 +453,7 @@ pingpong() {
       [ -n "$filter_num" ] || filter_num=1100
    fi
 
-   pingpong_file $share_dir
+   pingpong_file $share_dir "${mpi_type}" "${kgt_mpi}"
    for (( lloop=1 ; lloop <= $loop_num; lloop++)); do
      echo
      echo "** Run pingpong : ${lloop}/${loop_num}"
@@ -451,7 +464,7 @@ pingpong() {
            echo "** Start at $date_str" >> /tmp/$fff
        done
        echo "Filter value : $filter_num MBS" >> /tmp/kgt_pingpong_bad.log
-       find_ib_bad "$share_dir" "$ib_dev" "$ib_port" "$filter_num" "${mpi_type}" ${host_list[*]}
+       find_ib_bad "$share_dir" "$ib_dev" "$ib_port" "$filter_num" "${mpi_type}" "${kgt_mpi}" ${host_list[*]} 
      else
        if (( $host_count > $unit_num )); then
          for ((ii=0; ii<$(($((${host_count}/$unit_num))+1)); ii++)); do
@@ -463,11 +476,11 @@ pingpong() {
              echo "${host_list[$jj]}" >> $hostfile
            done
            host_count_cur=$(cat $hostfile|wc -l)
-           pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count_cur" "${mpi_type}"
+           pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count_cur" "${mpi_type}" "${kgt_mpi}"
          done
        else
          echo "${host_list[*]}" | sed "s/ /\n/g" > $hostfile
-         pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count" "${mpi_type}"
+         pingpong_run "$share_dir" "$hostfile" "$ib_dev" "$ib_port" "$host_count" "${mpi_type}" "${kgt_mpi}"
        fi
      fi
    done
