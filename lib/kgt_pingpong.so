@@ -414,7 +414,7 @@ _pingpong_help() {
      echo "  -l <loop#>           : default 1"
      echo "  -u <pingpong unit>   : Testing group unit, default 30 nodes"
      echo "  -find                : Find low speed"
-     echo "     -f <filter num>   : Fileter value, default 1100 MBS"
+     echo "     -f <filter num>   : Fileter value, default 1500 MBS"
      echo "  -mt <mpi app>        : Select MPI App(mpich,intel,mvapich,openmpi), default mpich"
      echo "     -kgt              : using MPI App of KGT packages (mpich,mvapich)"
      echo
@@ -461,7 +461,7 @@ pingpong() {
    [ -n "$unit_num" ] || unit_num=30
    if [ "$find_ib_bad" == "1" ]; then
       filter_num=$(_k_opt -f 1 0 "$@")
-      [ -n "$filter_num" ] || filter_num=1100
+      [ -n "$filter_num" ] || filter_num=1500
    fi
 
    pingpong_file "$share_dir" "${mpi_type}" "${kgt_mpi}"
