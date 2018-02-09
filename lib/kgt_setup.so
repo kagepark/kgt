@@ -118,7 +118,7 @@ build_hpl() {
 #
 #  HPL
 #
-#conflict               mpi
+conflict               hpl
 prepend-path            HPL_HOME       $share_dir/hpl
 EOF
    fi
@@ -176,6 +176,23 @@ build_mvapich() {
        make install
        cd -
        rm -fr /tmp/mvapich2-2.2
+
+       echo << EOF > $_KGT_HOME/modules/mvapich
+#%Module 1.0
+#
+#  MVAPICH module for use with 'environment-modules' package:
+#
+conflict                mpi
+prepend-path            PATH            $share_dir/mvapich/bin
+prepend-path            LD_LIBRARY_PATH $share_dir/mvapich/lib
+prepend-path            MANPATH         $share_dir/mvapich/man
+prepend-path            PKG_CONFIG_PATH $share_dir/mvapich/lib/pkgconfig
+setenv                  MPI_BIN         $share_dir/mvapich/bin
+setenv                  MPI_INCLUDE     $share_dir/mvapich/include
+setenv                  MPI_LIB         $share_dir/mvapich/lib
+setenv                  MPI_MAN         $share_dir/mvapich/man
+setenv                  MPI_HOME        $share_dir/mvapich
+EOF
    fi
 }
 
