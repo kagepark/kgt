@@ -238,6 +238,7 @@ int main(int argc, char *argv[])
 EOF
 
   mpicc /tmp/pingpong.c -o ${file_path}/pingpong
+  rm -f /tmp/pingpong.c
 }
 
 pingpong_run() {
@@ -470,4 +471,5 @@ pingpong() {
        fi
      fi
    done
+   [ -f ${share_dir}/pingpong ] && rm -f ${share_dir}/pingpong
 }

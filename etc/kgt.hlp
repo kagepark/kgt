@@ -1,6 +1,6 @@
 help or --help    # Help
 version           # display version
-setup or --setup  # Setup profile to /etc/profile.d/kgt.sh
+setup      # Setup profile to /etc/profile.d/kgt.sh
 check      # Check base items on the system
 top        # display CPU utilization 
 temp       # display Physical CPU temperature

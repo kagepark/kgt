@@ -1,0 +1,32 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+build_hpl() {
+   echo
+}
+
+build_ctcs() {
+   echo
+}
+
+build_memtest() {
+   echo
+}
+
+build_mpich() {
+   echo
+}
+
+build_mvapich() {
+   echo
+}
+
+setup() {
+    _k_root
+    echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
+    echo "Please run \"source /etc/profile.d/kgt.sh\""
+
+    build_hpl
+}
