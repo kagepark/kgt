@@ -163,9 +163,11 @@ build_stress_ng() {
 
 setup() {
     _k_root
+    share_dir_base=$(_k_opt -s 1 0 "$@")
+    [ -n "$share_dir_base" ] || share_dir_base=/global
     echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
     echo "Please run \"source /etc/profile.d/kgt.sh\""
-    share_dir=/global/kgt
+    share_dir=$share_dir_base/kgt
     [ -d $share_dir ] || mkdir -p $share_dir
     pre_req 
     build_pip
