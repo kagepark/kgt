@@ -46,6 +46,7 @@ build_module() {
        make install
        cd -
        rm -fr /tmp/modules-4.1.0
+       mkdir -p $_KGT_HOME/modules
    fi
 }
 
@@ -60,6 +61,16 @@ build_fio() {
        make install
        cd -
        rm -fr /tmp/fio-fio-3.3
+       
+       echo << EOF > $_KGT_HOME/modules/fio
+#%Module 1.0
+#
+#  FIO
+#
+#conflict               mpi
+prepend-path            PATH            $share_dir/fio/bin
+prepend-path            MANPATH         $share_dir/fio/man
+EOF
    fi
 }
 
@@ -75,6 +86,15 @@ build_blas() {
        (cd $share_dir/blas && ln -s blas_LINUX.a libblas.a)
        cd -
        rm -fr /tmp/BLAS-3.8.0
+       echo << EOF > $_KGT_HOME/modules/blas
+#%Module 1.0
+#
+#  Blas
+#
+#conflict               mpi
+prepend-path            BLAS_HOME       $share_dir/blas
+prepend-path            LD_LIBRARY_PATH $share_dir/blas
+EOF
    fi
 }
 
@@ -93,6 +113,14 @@ build_hpl() {
        cp -a bin/mpich_gcc $share_dir/hpl
        cd -
        rm -fr /tmp/hpl-2.2
+       echo << EOF > $_KGT_HOME/modules/hpl
+#%Module 1.0
+#
+#  HPL
+#
+#conflict               mpi
+prepend-path            HPL_HOME       $share_dir/hpl
+EOF
    fi
 }
 
@@ -115,6 +143,25 @@ build_mpich() {
        make install
        cd -
        rm -fr /tmp/mpich-3.2.1
+       echo << EOF > $_KGT_HOME/modules/mpich
+#%Module 1.0
+#
+#  MPICH module for use with 'environment-modules' package:
+#
+conflict                mpi
+prepend-path            PATH            $share_dir/mpich/bin
+prepend-path            LD_LIBRARY_PATH $share_dir/mpich/lib
+prepend-path            MANPATH         $share_dir/mpich/man
+prepend-path            PKG_CONFIG_PATH $share_dir/mpich/lib/pkgconfig
+setenv                  MPI_BIN         $share_dir/mpich/bin
+#setenv                  MPI_FORTRAN_MOD_DIR     /usr/lib64/gfortran/modules/mpich-x86_64
+setenv                  MPI_INCLUDE     $share_dir/mpich/include
+setenv                  MPI_LIB         $share_dir/mpich/lib
+setenv                  MPI_MAN         $share_dir/mpich/man
+#setenv                  MPI_PYTHON_SITEARCH     /usr/lib64/python2.7/site-packages/mpich
+#setenv                  MPI_COMPILER    mpich-x86_64
+setenv                  MPI_HOME        $share_dir/mpich
+EOF
    fi
 }
 
@@ -143,6 +190,15 @@ build_stress() {
        make install
        cd -
        rm -fr /tmp/stress-1.0.4
+
+       echo << EOF > $_KGT_HOME/modules/stress
+#%Module 1.0
+#
+#  Stress
+#
+prepend-path            PATH            $share_dir/stress
+EOF
+
    fi
 }
 
@@ -157,6 +213,14 @@ build_stress_ng() {
        cp -a stress-ng $share_dir/stress_ng
        cd -
        rm -fr /tmp/stress-ng-0.09.15
+
+       echo << EOF > $_KGT_HOME/modules/stress_ng
+#%Module 1.0
+#
+#  Stress-ng
+#
+prepend-path            PATH            $share_dir/stress_ng
+EOF
    fi
 }
 

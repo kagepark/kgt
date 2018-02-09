@@ -48,7 +48,7 @@ _k_root() {
 env() {
    if [ -f /global/opt/modules/init/profile.sh ]; then
       source /global/opt/modules/init/profile.sh
-      MODULEPATH=${MODULEPATH}:/global/opt/modules/envs
+      [ -d $_KGT_HOME/modules ] && MODULEPATH=${MODULEPATH}:$_KGT_HOME/modules
       module $*
    else
       return 1
