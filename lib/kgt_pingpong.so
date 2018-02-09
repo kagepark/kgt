@@ -4,11 +4,13 @@
 # License : GPL
 ####################################
 pingpong_file()  {
-    local  file_path mpi_type
+    local  file_path mpi_type kgt_mpi
     file_path=$1
     mpi_type=$2
     kgt_mpi=$3
+
     [ -n "$file_path" -a -d "$file_path" ] || error_exit "Can not found $file_path"
+
     cat << EOF > /tmp/pingpong.c
 /* Each Process Ping-Pongs With Every Other Process - Done One Pair at a Time
       Parameters:
@@ -240,7 +242,9 @@ int main(int argc, char *argv[])
 }
 EOF
 
-  [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
+  if [ "$kgt_mpi" == "1" ]; then
+     env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+  fi
   mpicc /tmp/pingpong.c -o ${file_path}/pingpong
   rm -f /tmp/pingpong.c
   [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
@@ -259,7 +263,9 @@ pingpong_run() {
     [ -n "$file_path" -a -d "$file_path" ] || error_exit "$file_path not found"
     [ -n "$hostfile" -a -f "$hostfile" ] || error_exit "$hostfile not found"
     [ -n "$count" ] || count=$(cat $hostfile| wc -l)
-    [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
+    if [ "$kgt_mpi" == "1" ]; then
+       env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+    fi
     if [ "$mpi_type" == "mpich" ]; then
        if [ "$ib_dev" == "ib0" -o "$ib_dev" == "ib1" ]; then
           ib_opt="-iface ${ib_dev}" 
@@ -295,7 +301,10 @@ find_ib_bad() {
     exit
   fi
 
-  [ "$kgt_mpi" == "1" ] && env load ${mpi_type}
+  if [ "$kgt_mpi" == "1" ]; then
+     env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+  fi
+
   if [ "$mpi_type" == "mpich" ]; then
      if [ "$ib_dev" == "ib0" -o "$ib_dev" == "ib1" ]; then
        ib_opt="-iface ${_ib_ping}"
@@ -407,7 +416,7 @@ _pingpong_help() {
      echo "  -find                : Find low speed"
      echo "     -f <filter num>   : Fileter value, default 1100 MBS"
      echo "  -mt <mpi app>        : Select MPI App(mpich,intel,mvapich,openmpi), default mpich"
-     echo "     -kgt              : using MPI App of KGT packages (mpich,mvapich)
+     echo "     -kgt              : using MPI App of KGT packages (mpich,mvapich)"
      echo
      echo " * Not support mlx4_0,mlx5_0,..."
      echo " * Not support intel mpi, mvapich, openmpi yet"
@@ -416,8 +425,6 @@ _pingpong_help() {
 }
 
 pingpong() {
-   [ -n "$(whereis mpicc | awk -F: '{print $2}')" ] || error_exit "mpicc not found, Please install MPI App or load environment(ex: module load mpich)"
-   [ -n "$(whereis mpirun | awk -F: '{print $2}')" ] || error_exit "mpirun not found, Please install MPI App or load environment(ex: module load mpich)"
 
    share_dir=$(_k_opt -s 1 0 "$@")
    hosts=$(_k_opt -h 1 0 "$@") || hosts=$(_k_opt -g 1 0 "$@")
@@ -427,13 +434,17 @@ pingpong() {
    loop_num=$(_k_opt -l 1 0 "$@")
    unit_num=$(_k_opt -u 1 0 "$@")
    mpi_type=$(_k_opt -mt 1 0 "$@")
-   _k_opt -kgt 0 0 "$@" && kgt_mpi=1
+   _k_opt -kgt 0 0 "$@" >& /dev/null && kgt_mpi=1
    _k_opt -find 0 0 "$@" >& /dev/null && find_ib_bad=1
    if [ ! -n "$hosts" ]; then
       _pingpong_help
    fi
 
    [ -n "$mpi_type" ] || mpi_type=mpich
+   if [ "$kgt_mpi" != "1" ]; then
+      [ -n "$(whereis mpicc | awk -F: '{print $2}')" ] || error_exit "mpicc not found, Please install MPI App or load environment(ex: module load mpich)"
+      [ -n "$(whereis mpirun | awk -F: '{print $2}')" ] || error_exit "mpirun not found, Please install MPI App or load environment(ex: module load mpich)"
+   fi
    host_list=($(_k_make_hostname $@))
 
    [ -n "$share_dir" ] || share_dir=/global
@@ -453,7 +464,7 @@ pingpong() {
       [ -n "$filter_num" ] || filter_num=1100
    fi
 
-   pingpong_file $share_dir "${mpi_type}" "${kgt_mpi}"
+   pingpong_file "$share_dir" "${mpi_type}" "${kgt_mpi}"
    for (( lloop=1 ; lloop <= $loop_num; lloop++)); do
      echo
      echo "** Run pingpong : ${lloop}/${loop_num}"

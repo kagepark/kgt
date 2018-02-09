@@ -170,7 +170,7 @@ TOPdir       = $src_dir" Make.${env_file}_gcc
 #
 #  HPL
 #
-conflict               hpl
+#conflict               hpl
 prepend-path            HPL_HOME       $share_dir/hpl
 EOF
    else
@@ -199,6 +199,7 @@ build_mpich() {
 #  MPICH module for use with 'environment-modules' package:
 #
 conflict                mpi
+conflict                mvapich
 prepend-path            PATH            $share_dir/mpich/bin
 prepend-path            LD_LIBRARY_PATH $share_dir/mpich/lib
 prepend-path            MANPATH         $share_dir/mpich/man
@@ -234,6 +235,7 @@ build_mvapich() {
 #  MVAPICH module for use with 'environment-modules' package:
 #
 conflict                mpi
+conflict                mpich
 prepend-path            PATH            $share_dir/mvapich/bin
 prepend-path            LD_LIBRARY_PATH $share_dir/mvapich/lib
 prepend-path            MANPATH         $share_dir/mvapich/man
