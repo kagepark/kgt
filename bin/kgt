@@ -58,8 +58,6 @@ if [ "$cmd" == "help" -o "$cmd" == "--help" ]; then
     _help
 elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
     echo "$_KGT_VERSION"
-elif [ "$cmd" == "setup" -o "$cmd" == "--setup" ]; then
-    _setup
 else
    for cmdname in $cmd_str; do
       if [ "$cmd" == "$cmdname" ]; then
