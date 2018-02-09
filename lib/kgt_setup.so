@@ -3,6 +3,7 @@
 # Kage Park
 # License : GPL
 ####################################
+org_path=$(pwd)
 find_rpm() {
     rpm -qa --qf "%{NAME}\n" |grep "^${1}$" >& /dev/null && return 0 || return 1
 }
@@ -35,33 +36,52 @@ build_pip_modules() {
   done
 }
 
+_extract() {
+   file=$1
+   [ -f "$file" ] || return 1
+   [ -d /tmp/kgt ] && rm -fr /tmp/kgt
+   mkdir -p /tmp/kgt
+   ext=($(echo $file | sed "s/\./ /g"))
+   if [ "${ext[$((${#ext[*]}-1))]}" == "bz2" ]; then
+       tar_opt=jxvf
+   elif [ "${ext[$((${#ext[*]}-1))]}" == "gz" ]; then
+       tar_opt=zxvf
+   elif [ "${ext[$((${#ext[*]}-1))]}" == "xz" ]; then
+       tar_opt=Jxvf
+   else
+       echo "Unknown option"
+       exit 1
+   fi 
+   tar $tar_opt $file -C /tmp/kgt  > /tmp/kgt.extract.log 2>&1 || return 1
+   (cd /tmp/kgt/* && echo $(pwd) )
+}
+
 build_module() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/modules-4.1.0.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/modules-4.1.0.tar.bz2 -C /tmp
-       cd /tmp/modules-4.1.0
+   if src_dir=$(_extract $_KGT_HOME/share/modules-4.1.0.tar.bz2); then
+       cd $src_dir
        ./configure --prefix=$share_dir/modules
        make
        make install
-       cd -
-       rm -fr /tmp/modules-4.1.0
+       cd $org_path
+       rm -fr /tmp/kgt
        mkdir -p $_KGT_HOME/modules
+   else
+       echo "module file not found"
    fi
 }
 
 build_fio() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/fio-fio-3.3.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/fio-fio-3.3.tar.bz2 -C /tmp
-       cd /tmp/fio-fio-3.3
+   if src_dir=$(_extract $_KGT_HOME/share/modules-4.1.0.tar.bz2); then
+       cd $src_dir
        ./configure --prefix=$share_dir/fio
        make
        make install
-       cd -
-       rm -fr /tmp/fio-fio-3.3
-       
+       cd $org_path
+       rm -fr /tmp/kgt
        cat << EOF > $_KGT_HOME/modules/fio
 #%Module 1.0
 #
@@ -71,21 +91,47 @@ build_fio() {
 prepend-path            PATH            $share_dir/fio/bin
 prepend-path            MANPATH         $share_dir/fio/man
 EOF
+   else
+       echo "fio file not found"
    fi
 }
+
+build_iozone() {
+   local share_dir
+   share_dir=$1
+   if src_dir=$(_extract $_KGT_HOME/share/iozone3_471.tar.bz2); then
+       cd $src_dir/src/current
+       make linux
+       mkdir -p $share_dir/iozone
+       cp -a iozone fileop pit_server Gnuplot.txt iozone_visualizer.pl report.pl gnu3d.dem gengnuplot.sh Generate_Graphs *.dem $share_dir/iozone
+       cd $org_path
+       rm -fr /tmp/kgt
+       cat << EOF > $_KGT_HOME/modules/iozone
+#%Module 1.0
+#
+#  IOZONE
+#
+#conflict               mpi
+prepend-path            IOZONE_HOME     $share_dir/iozone
+prepend-path            PATH            $share_dir/iozone
+EOF
+   else
+       echo "iozone file not found"
+   fi
+}
+
 
 build_blas() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/blas-3.8.0.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/blas-3.8.0.tar.bz2 -C /tmp
-       cd /tmp/BLAS-3.8.0
+   if src_dir=$(_extract $_KGT_HOME/share/blas-3.8.0.tar.bz2); then
+       cd $src_dir
        make
        mkdir -p $share_dir/blas
        cp -a *.a *.so $share_dir/blas 2>/dev/null
        (cd $share_dir/blas && ln -s blas_LINUX.a libblas.a)
-       cd -
-       rm -fr /tmp/BLAS-3.8.0
+       cd $org_path
+       rm -fr /tmp/kgt
        cat << EOF > $_KGT_HOME/modules/blas
 #%Module 1.0
 #
@@ -95,6 +141,8 @@ build_blas() {
 prepend-path            BLAS_HOME       $share_dir/blas
 prepend-path            LD_LIBRARY_PATH $share_dir/blas
 EOF
+   else
+       echo "blas file not found"
    fi
 }
 
@@ -102,17 +150,16 @@ build_hpl() {
    local share_dir
    share_dir=$1
    env_file=$2
-   if [ -f "$_KGT_HOME/share/hpl-2.2.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/hpl-2.2.tar.bz2 -C /tmp
-       cd /tmp/hpl-2.2
+   if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
+       cd $src_dir
        env ${env_file}
        export BLAS_HOME=$share_dir/blas
        cp -a $_KGT_HOME/share/Make.${env_file}_gcc.hpl Make.${env_file}_gcc
        make arch=${env_file}_gcc
        mkdir -p $share_dir/hpl
        cp -a bin/mpich_gcc $share_dir/hpl
-       cd -
-       rm -fr /tmp/hpl-2.2
+       cd $org_path
+       rm -fr /tmp/kgt
        cat << EOF > $_KGT_HOME/modules/hpl
 #%Module 1.0
 #
@@ -121,12 +168,11 @@ build_hpl() {
 conflict               hpl
 prepend-path            HPL_HOME       $share_dir/hpl
 EOF
+   else
+       echo "hpl file not found"
    fi
 }
 
-build_ctcs() {
-   echo
-}
 
 build_memtest() {
    echo
@@ -135,14 +181,13 @@ build_memtest() {
 build_mpich() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/mpich-3.2.1.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/mpich-3.2.1.tar.bz2 -C /tmp
-       cd /tmp/mpich-3.2.1
+   if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
+       cd $src_dir
        ./configure --prefix=$share_dir/mpich --disable-fast MPICHLIB_CFLAGS=-O3 MPICHLIB_FFLAGS=-O3 MPICHLIB_CXXFLAGS=-O3 MPICHLIB_FCFLAGS=-O3
        make -j 4
        make install
-       cd -
-       rm -fr /tmp/mpich-3.2.1
+       cd $org_path
+       rm -fr /tmp/kgt
        cat << EOF > $_KGT_HOME/modules/mpich
 #%Module 1.0
 #
@@ -162,20 +207,21 @@ setenv                  MPI_MAN         $share_dir/mpich/man
 #setenv                  MPI_COMPILER    mpich-x86_64
 setenv                  MPI_HOME        $share_dir/mpich
 EOF
+   else
+       echo "mpich file not found"
    fi
 }
 
 build_mvapich() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/mvapich2-2.2.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/mvapich2-2.2.tar.bz2 -C /tmp
-       cd /tmp/mvapich2-2.2
+   if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
+       cd $src_dir
        ./configure --prefix=$share_dir/mvapich
        make -j 4
        make install
-       cd -
-       rm -fr /tmp/mvapich2-2.2
+       cd $org_path
+       rm -fr /tmp/kgt
 
        cat << EOF > $_KGT_HOME/modules/mvapich
 #%Module 1.0
@@ -193,20 +239,21 @@ setenv                  MPI_LIB         $share_dir/mvapich/lib
 setenv                  MPI_MAN         $share_dir/mvapich/man
 setenv                  MPI_HOME        $share_dir/mvapich
 EOF
+   else
+       echo "mvapich file not found"
    fi
 }
 
 build_stress() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/stress-1.0.4.tar.bz2" ]; then
-       tar jxvf $_KGT_HOME/share/stress-1.0.4.tar.bz2 -C /tmp
-       cd /tmp/stress-1.0.4
+   if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
+       cd $src_dir
        ./configure --prefix=$share_dir/stress
        make
        make install
-       cd -
-       rm -fr /tmp/stress-1.0.4
+       cd $org_path
+       rm -fr /tmp/kgt
 
        cat << EOF > $_KGT_HOME/modules/stress
 #%Module 1.0
@@ -215,21 +262,21 @@ build_stress() {
 #
 prepend-path            PATH            $share_dir/stress
 EOF
-
+   else
+       echo "stress file not found"
    fi
 }
 
 build_stress_ng() {
    local share_dir
    share_dir=$1
-   if [ -f "$_KGT_HOME/share/stress-ng-0.09.15.tar.xz" ]; then
-       tar Jxvf $_KGT_HOME/share/stress-ng-0.09.15.tar.xz -C /tmp
-       cd /tmp/stress-ng-0.09.15
+   if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
+       cd $src_dir
        make
        mkdir -p $share_dir/stress_ng
        cp -a stress-ng $share_dir/stress_ng
-       cd -
-       rm -fr /tmp/stress-ng-0.09.15
+       cd $org_path
+       rm -fr /tmp/kgt
 
        cat << EOF > $_KGT_HOME/modules/stress_ng
 #%Module 1.0
@@ -238,6 +285,8 @@ build_stress_ng() {
 #
 prepend-path            PATH            $share_dir/stress_ng
 EOF
+   else
+       echo "stress-ng file not found"
    fi
 }
 
@@ -262,4 +311,6 @@ setup() {
     [ -d $share_dir/hpl/mvapich_gcc ] || build_hpl $share_dir mvapich
     [ -d $share_dir/hpl/stress ] || build_stress $share_dir
     [ -d $share_dir/hpl/stress_ng ] || build_stress_ng $share_dir
+    [ -d $share_dir/hpl/iozone ] || build_iozone $share_dir
+    echo "Build and setup done"
 }
