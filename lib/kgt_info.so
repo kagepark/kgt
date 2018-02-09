@@ -24,8 +24,8 @@ node_info() {
   printf "%17s : %-s\n" "Hostname" "$(hostname)"
   printf "%17s : %-s\n" "OS" "$([ -f /etc/redhat-release ] && cat /etc/redhat-release)"
   printf "%17s : %-s\n" "Kernel" "$(uname -r)"
-  printf "%17s : %-s\n" "M/B" $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-")
-  printf "%17s : %-s\n" "BIOSv" $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-")
+  printf "%17s : %-s\n" "M/B" "$(echo $([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo "-"))"
+  printf "%17s : %-s\n" "BIOSv" "$(echo $([ -f /sys/devices/virtual/dmi/id/bios_version ] && cat /sys/devices/virtual/dmi/id/bios_version || echo "-"))"
   printf "%17s : %-s\n" "CPUs" "${cpunum}(${corenum}*${socketnum}) $(cat /proc/cpuinfo | grep "model name" | uniq | awk -F: '{print $2}')"
   printf "%17s : %-s\n" "HT"  "$( (( $hyper > 1 )) && echo on || echo off)"
   printf "%17s : %-s\n" "GHz" "$hz"
@@ -56,29 +56,29 @@ node_info() {
   printf "%17s : %-s\n" "NTP" $(ps -ef |grep ntpd | grep -v grep >& /dev/null && echo Run || echo "-")
   printf "%17s : %-s\n" "NIC" $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo" | wc -l)
   for nic in $(ls /sys/class/net/ | grep -v -e "^ib" -e "lo"); do
-      printf "%13s + %-13s : %s\n" "" "NIC Name" $nic
-      printf "%16s - %-10s : %s\n" "" "MAC Addr" $(cat /sys/class/net/$nic/address)
-      printf "%16s - %-10s : %s\n" "" "State" $(cat /sys/class/net/$nic/operstate)
-      printf "%16s - %-10s : %s\n" "" "Module" $(basename $(readlink -f /sys/class/net/$nic/device/driver))
-      printf "%16s - %-10s : %s\n" "" "version" $([ -f /sys/class/net/$nic/device/driver/module/version ] && cat /sys/class/net/$nic/device/driver/module/version || echo "-")
-      printf "%16s - %-10s : %s\n" "" "OS Ver" $([ -f /sys/class/net/$nic/device/driver/module/rhelversion ] && cat /sys/class/net/$nic/device/driver/module/rhelversion || echo "-")
-      printf "%16s - %-10s : %s\n" "" "Speed" $(cat /sys/class/net/$nic/speed)
-      printf "%16s - %-10s : %s\n" "" "Duplex" $(cat /sys/class/net/$nic/duplex)
+      printf "%13s + %-13s : %s\n" "" "NIC Name" "$nic"
+      printf "%16s - %-10s : %s\n" "" "MAC Addr" "$(cat /sys/class/net/$nic/address)"
+      printf "%16s - %-10s : %s\n" "" "State" "$(cat /sys/class/net/$nic/operstate)"
+      printf "%16s - %-10s : %s\n" "" "Module" "$(basename $(readlink -f /sys/class/net/$nic/device/driver))"
+      printf "%16s - %-10s : %s\n" "" "version" "$([ -f /sys/class/net/$nic/device/driver/module/version ] && cat /sys/class/net/$nic/device/driver/module/version || echo "-")"
+      printf "%16s - %-10s : %s\n" "" "OS Ver" "$([ -f /sys/class/net/$nic/device/driver/module/rhelversion ] && cat /sys/class/net/$nic/device/driver/module/rhelversion || echo "-")"
+      printf "%16s - %-10s : %s\n" "" "Speed" "$([ -f /sys/class/net/$nic/speed ] && cat /sys/class/net/$nic/speed || echo "-")"
+      printf "%16s - %-10s : %s\n" "" "Duplex" "$([ -f /sys/class/net/$nic/duplex ] && cat /sys/class/net/$nic/duplex || echo "-")"
   done
 
   printf "%17s : %-s\n" "HDD" $(ls /sys/block/ | grep -v -e "dm-" -e "loop"| wc -l)
   for hdd in $(ls /sys/block | grep -v -e "^dm" -e "^loop"); do
-      printf "%13s + %-13s : %s\n" "" "HDD Name" $hdd
+      printf "%13s + %-13s : %s\n" "" "HDD Name" "$hdd"
       printf "%16s - %-10s : %s\n" "" "Path" "$(cat /sys/block/$hdd/dev)"
       printf "%16s - %-10s : %s\n" "" "Model" "$(cat /sys/block/$hdd/device/model)"
-      printf "%16s - %-10s : %s\n" "" "Size" $(fdisk -l /dev/$hdd | grep "^Disk /dev" | awk '{print $3 $4}' | sed "s/,//g")
+      printf "%16s - %-10s : %s\n" "" "Size" "$(fdisk -l /dev/$hdd | grep "^Disk /dev" | awk '{print $3 $4}' | sed "s/,//g")"
       [ -f /usr/sbin/smartctl ] && printf "%16s - %-10s : %s\n" "" "Temp(*C)" "$(smartctl -A /dev/$hdd | grep Temperature_Celsius | awk '{print $10}')"
       printf "%16s - %-10s : %s\n" "" "S/N" "$(awk '{print $1}' /sys/block/$hdd/device/serial)"
       printf "%16s - %-10s : %s\n" "" "Firmware" "$(cat /sys/block/$hdd/device/firmware_rev)"
   done
-  printf "%17s : %-s\n" "IPMI" $([ -c /dev/ipmi0 ] && echo On || echo "-")
-  printf "%17s : %-s\n" "BMCFV" $([ -f /usr/bin/ipmitool ] && ipmitool mc info | grep "^Firmware Revision" | awk '{print $4}' || echo "x")
-  printf "%17s : %-s\n" "Infiniband" $(ls /sys/class/infiniband | wc -l)
+  printf "%17s : %-s\n" "IPMI" "$([ -c /dev/ipmi0 ] && echo On || echo "-")"
+  printf "%17s : %-s\n" "BMCFV" "$([ -f /usr/bin/ipmitool ] && ipmitool mc info | grep "^Firmware Revision" | awk '{print $4}' || echo "x")"
+  printf "%17s : %-s\n" "Infiniband" "$(ls /sys/class/infiniband | wc -l)"
   for ibn in $(ls /sys/class/infiniband/); do
       printf "%13s + %-13s : %s\n" "" "IB Name" "$ibn"
       ib_drv=$([ -L /sys/class/infiniband/$ibn/device/driver ] && basename $(readlink -f /sys/class/infiniband/$ibn/device/driver) || echo "-")
