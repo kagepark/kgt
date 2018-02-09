@@ -12,7 +12,8 @@ cpu_temp() {
              [ -n "$temp" ] && printf "%5.1f " $(bc -l <<< "$temp / 1000") || echo "CPU Temperature file not found"
           done
        elif [ -f /usr/bin/sensors ]; then
-          sensors | grep "^Physical id" | awk '{print $4}'
+          tmp_temp=$(sensors | grep "^Physical id" | awk '{print $4}')
+          [ -n "$tmp_temp" ] && echo $tmp_temp || sensors | grep "^Core 0:" | awk '{print $3}'
        else
           echo "Not support this system, please install lm_sensors or coretemp kernel module"
        fi
