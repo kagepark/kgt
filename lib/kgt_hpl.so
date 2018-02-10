@@ -205,7 +205,7 @@ hpl() {
     [ -d "$hpl_path" ] || hpl_help
     if [ "$conf_hpl" == "1" ]; then
        [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
-       max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config" "$precision"
+       max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path" "$precision") || error_exit "Error HPL config" 
     else
        PS_arr=($(grep "Ps" $hpl_path/HPL.dat | sed "s/Ps//g"))
        QS_arr=($(grep "Qs" $hpl_path/HPL.dat | sed "s/Qs//g"))
