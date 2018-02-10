@@ -11,34 +11,48 @@ hpl_data() {
    gmem=$3
    percent_mem=$4
    hpl_path=$5
-   precision=8
+   precision=$6
+   swap_th=64 #128 or 64
    total_cores=$(($cpu * $nodes))
-   total_mem_kb=$(($gmem * 1024 * 1024 * 1024 * $nodes))
-   avail_mem=$(($total_mem_kb / $precision))
-   problem_size=$(( $(( $(echo "sqrt($avail_mem)" | bc) * $percent_mem )) / 100))
-   nb_size=$(($(($total_cores/$precision))/2))
-   for ii in 8 6 4 2 1; do
-        sm_nb_size=$(( $nb_size / $ii ))
-        if (( $sm_nb_size > 2 )); then
-            nb_size_num=$ii
-            break
-        fi
-   done
-   nb_size_str=$(for ((ii=1; ii<=$nb_size_num; ii++)); do 
-       printf "%s " $(($sm_nb_size * $ii)); 
-   done)
+   total_mem_b=$(($gmem * 1024 * 1024 * 1024 * $nodes))
+   avail_mem=$(( $(( $(($total_mem_b / $precision)) * $percent_mem )) / 100))
+   #avail_mem=$(( $(( $total_mem_b * $percent_mem )) / 100))
+   problem_size=$(echo "sqrt($avail_mem)" | bc) # Ractangle area
+   problem_size_unit_n=$(($problem_size / 64))    #64B
+   problem_size_unit_nb=$(($problem_size / 8192)) #8KB
 
-   n_size_str=$(for ((ii=1; ii<= $nb_size_num ; ii++)); do
-      printf "%s " $(($problem_size / $(($sm_nb_size * $nb_size_num * $ii)) ))
+   n_size_str=$(for ii in 64 32 8 2 1; do
+       printf "%s " $(($problem_size_unit_n * $ii))
    done)
-#   n_size=$(($problem_size / $nb_size))
+   n_size_num=5
 
+   nb_size_str=$(for ii in 1 2 32 512 2048 4096 8192; do
+       printf "%s " $(($problem_size_unit_nb * $ii))
+   done)
+   nb_size_num=7
+# NB x NBs
+#   nb_size=$(($(($total_cores/$precision))/2))
+#   for ii in 8 6 4 2 1; do
+#        sm_nb_size=$(( $nb_size / $ii ))
+#        if (( $sm_nb_size > 2 )); then
+#            nb_size_num=$ii
+#            break
+#        fi
+#   done
+#   nb_size_str=$(for ((ii=1; ii<=$nb_size_num; ii++)); do 
+#       printf "%s " $(($sm_nb_size * $ii)); 
+#   done)
+#
+#   n_size_str=$(for ((ii=1; ii<= $nb_size_num ; ii++)); do
+#      printf "%s " $(($problem_size / $(($sm_nb_size * $nb_size_num * $ii)) ))
+#   done)
+
+# PxQ
    p=(1 2 4 8 16 32 64 128 256 512 1024 2048 4096)
    pqn=$(for ((ii=0; ii<${#p[*]}; ii++)); do if ((${p[$ii]} > $total_cores)); then echo $ii; break; fi  done)
    [ -n "$pqn" ] || pqn=${#p[*]}
    ps_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " ${p[$ii]}; done)
    qs_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " $(($total_cores/${p[$ii]})); done)
-   swap_th=128 # or 64
 
    ps_arr=($ps_str)
    qs_arr=($qs_str)
@@ -53,7 +67,7 @@ hpl_data() {
 Innovative Computing Laboratory, University of Tennessee
 HPL.out      output file name (if any)
 6            device out (6=stdout,7=stderr,file)
-$nb_size_num            # of problems sizes (N)
+$n_size_num            # of problems sizes (N)
 $n_size_str      Ns
 $nb_size_num            # of NBs
 $nb_size_str         NBs
@@ -137,6 +151,7 @@ hpl_help() {
     echo " -nn <node num>    : Running host number"
     echo " -ms <memory size> : Free <memory size> of node"
     echo " -pc <percent>     : Memory usage percent, default 90(%)"
+    echo " -pr <precision>   : precision(8,16), default 8"
     echo " -hp <xhpl path>   : xhpl path"
     echo " -mt <mpi type>    : intel,mpich,mvapich..., default mpich"
     echo " -ib <ib name>     : ib0, mlx5_0,... , default Ethernet"
@@ -179,16 +194,18 @@ hpl() {
     percent=$(_k_opt -pc 1 0 "$@")
     hpl_path=$(_k_opt -hp 1 0 "$@")
     mpi_type=$(_k_opt -mt 1 0 "$@")
+    precision=$(_k_opt -pr 1 0 "$@")
     ib=$(_k_opt -ib 1 0 "$@")
     hosts=$(_k_make_hostname "$@")
 
+    [ -n "$precision" ] || precision=8
     [ -n "$percent" ] || percent=90
     [ -n "$mpi_type" ] || mpi_type=mpich
 
     [ -d "$hpl_path" ] || hpl_help
     if [ "$conf_hpl" == "1" ]; then
        [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
-       max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
+       max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config" "$precision"
     else
        PS_arr=($(grep "Ps" $hpl_path/HPL.dat | sed "s/Ps//g"))
        QS_arr=($(grep "Qs" $hpl_path/HPL.dat | sed "s/Qs//g"))
@@ -205,11 +222,16 @@ hpl() {
     if [ "$run_hpl_mpi" == "1" ]; then
         [ -n "$hosts" ] || hpl_help
         [ -f "$hpl_path/xhpl" ] || error_exit "$hpl_path/xhpl not found"
+        echo "Cores/node: $cores" >> $hpl_path/hpl.run.log
+        echo "MemorySize/nodes: $memory GB" >> $hpl_path/hpl.run.log
+        echo "Usage percent of memory: $percent %" >> $hpl_path/hpl.run.log
+        echo "UsageSize/xhpl: $(( $(( $(($(($memory*1024))/$cores))* $percent))/100)) MB" >> $hpl_path/hpl.run.log
         echo "MPI Options:" >> $hpl_path/hpl.run.log
         echo "MAX MPI RUN #:  $max_mpi_run" >> $hpl_path/hpl.run.log
         echo "HPL Path: $hpl_path" >> $hpl_path/hpl.run.log
         echo "IB Option: $ib" >> $hpl_path/hpl.run.log
         echo "MPI App: $mpi_type" >> $hpl_path/hpl.run.log
+        echo "Nodes: $nodes" >> $hpl_path/hpl.run.log
         echo "Run hosts : $hosts" >> $hpl_path/hpl.run.log
         run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts | tee -a $hpl_path/hpl.run.log
         echo
