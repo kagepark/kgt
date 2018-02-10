@@ -135,6 +135,9 @@ hpl_help() {
     echo " -mt <mpi type>    : intel,mpich,mvapich..., default mpich"
     echo " -ib <ib name>     : ib0, mlx5_0,... , default Ethernet"
     echo 
+    echo " = debug option ="
+    echo " -fm <output logfile> : Find max condition from <output logfile>"
+    echo 
     echo "* Not support intel,openmpi,... yet"
     echo "* Not support mlx4_0,mlx5_0,HFI yet"
     exit
@@ -143,6 +146,26 @@ hpl_help() {
 hpl() {
     _k_opt -cf 0 0 "$@" >/dev/null && conf_hpl=1
     _k_opt -m 0 0 "$@" >/dev/null && run_hpl_mpi=1
+    find_max_log=$(_k_opt -fm 1 0 "$@")
+    if [ -n "$find_max_log" ]; then
+       [ -f "$find_max_log" ] || error_exit "$find_max_log not found"
+       max_val=0
+       max_info=""
+       while read line; do
+           gflops=$(printf "%15.0f"  $(echo $line | awk '{print $7}'))
+           if (( $gflops > $max_val )); then
+               max_val=$gflops
+               max_info="$line"
+           fi
+       done < <(cat $find_max_log | grep "^WR11C2R4")
+       echo "<Max condition>"
+       echo "================================================================================"
+       echo "T/V                N    NB     P     Q               Time                 Gflops"
+       echo "--------------------------------------------------------------------------------"
+       echo "$max_info"
+
+       exit
+    fi
     cores=$(_k_opt -cn 1 0 "$@")
     nodes=$(_k_opt -nn 1 0 "$@")
     memory=$(_k_opt -ms 1 0 "$@")
