@@ -27,7 +27,7 @@ hpl_data() {
        printf "%s " $(($sm_nb_size * $ii)); 
    done)
 
-   n_size_str=$(for ((ii=1; ii< $nb_size_num ; ii++)); do
+   n_size_str=$(for ((ii=1; ii<= $nb_size_num ; ii++)); do
       printf "%s " $(($problem_size / $(($sm_nb_size * $nb_size_num * $ii)) ))
    done)
 #   n_size=$(($problem_size / $nb_size))
