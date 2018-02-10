@@ -189,11 +189,11 @@ hpl() {
     if [ "$conf_hpl" == "1" ]; then
        max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
     else
-       PS_arr=($(grep "Ps" hpl_path/HPL.dat" | sed "s/Ps//g"))
-       QS_arr=($(grep "Qs" hpl_path/HPL.dat" | sed "s/Qs//g"))
+       PS_arr=($(grep "Ps" $hpl_path/HPL.dat | sed "s/Ps//g"))
+       QS_arr=($(grep "Qs" $hpl_path/HPL.dat | sed "s/Qs//g"))
        max_mpi_run=0
-       for (ii=0; ii<${#PS_arr[*]}; ii++)); do
-          (( $(( ${PS_arr[$ii]} * ${QS_arr[$ii]} )) > $max_mpi_run )) && max_mpi_run=$(( ${PS_arr[$ii]} * ${QS_arr[$ii]}
+       for ((ii=0; ii<${#PS_arr[*]}; ii++)); do
+          (( $(( ${PS_arr[$ii]} * ${QS_arr[$ii]} )) > $max_mpi_run )) && max_mpi_run=$(( ${PS_arr[$ii]} * ${QS_arr[$ii]} ))
        done
     fi
     [ -n "$max_mpi_run" ] || error_exit "not found max mpi run number"
