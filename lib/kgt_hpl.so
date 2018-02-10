@@ -126,9 +126,10 @@ hpl_help() {
 #    echo "  -c : Check HPL"
 #    echo "  -r : Run HPL Single node"
     echo "  -m : Run HPL MPI"
-    echo "  -cf : configure HPL.dat only, not run HPL"
+    echo "  -cf : configure HPL.dat"
 #    echo "  -k : Kill HPL"
 #    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
+    echo " -nl               : make a new log file"
     echo
     echo " = Run/Config option ="
     echo " -cn <core num>    : <core number> of node"
@@ -150,6 +151,7 @@ hpl_help() {
 hpl() {
     _k_opt -cf 0 0 "$@" >/dev/null && conf_hpl=1
     _k_opt -m 0 0 "$@" >/dev/null && run_hpl_mpi=1
+    _k_opt -nl 0 0 "$@" >/dev/null && new_log=1
     find_max_log=$(_k_opt -fm 1 0 "$@")
     if [ -n "$find_max_log" ]; then
        [ -f "$find_max_log" ] || error_exit "$find_max_log not found"
@@ -184,13 +186,21 @@ hpl() {
     [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" ] && hpl_help
 
     [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
-    max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
-
+    if [ "$conf_hpl" == "1" ]; then
+       max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
+    else
+       PS_arr=($(grep "Ps" hpl_path/HPL.dat" | sed "s/Ps//g"))
+       QS_arr=($(grep "Qs" hpl_path/HPL.dat" | sed "s/Qs//g"))
+       max_mpi_run=0
+       for (ii=0; ii<${#PS_arr[*]}; ii++)); do
+          (( $(( ${PS_arr[$ii]} * ${QS_arr[$ii]} )) > $max_mpi_run )) && max_mpi_run=$(( ${PS_arr[$ii]} * ${QS_arr[$ii]}
+       done
+    fi
     [ -n "$max_mpi_run" ] || error_exit "not found max mpi run number"
-    echo >>  $hpl_path/hpl.run.log
+    [ "$new_log" == "1" ] && echo > $hpl_path/hpl.run.log || echo >>  $hpl_path/hpl.run.log
     echo "==== $hpl_path/HPL.dat at $(date) ====" | tee -a $hpl_path/hpl.run.log
     cat $hpl_path/HPL.dat | tee -a $hpl_path/hpl.run.log
-    [ "$conf_hpl" == "1" ] && exit
+    echo >>  $hpl_path/hpl.run.log
     if [ "$run_hpl_mpi" == "1" ]; then
         [ -n "$hosts" ] || hpl_help
         [ -f "$hpl_path/xhpl" ] || error_exit "$hpl_path/xhpl not found"
