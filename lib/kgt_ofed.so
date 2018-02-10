@@ -39,7 +39,8 @@ ofed() {
         _ofed_help
      fi
    elif _k_opt -fd 0 0 "$@" >/dev/null; then
-     lspci -vv | grep -i mella
+     #lspci -vv | grep -i mella
+     lspci  | egrep -i "infiniband|ethernet|mellanox|connect" | grep -i mellanox
    elif _k_opt -ibd 0 0 "$@" >/dev/null; then
      rpm -qa | grep -e "ibutils" -e "ibutils2" > /dev/null || error_exit "Can not found IB Utils(OFED)"
      _k_opt -new 0 0 "$@" >& /dev/null && new=1
