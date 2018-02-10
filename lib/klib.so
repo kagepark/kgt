@@ -431,3 +431,96 @@ _k_misc_get_realpath() {
     done
 }
 
+_k_color_type() {
+    local color fcolor bcolor
+    color=$1
+    if [ "$color" == "black" ]; then
+       echo 30
+    elif [ "$color" == "red" ]; then
+       echo 31
+    elif [ "$color" == "green" ]; then
+       echo 32
+    elif [ "$color" == "yello" ]; then
+       echo 33
+    elif [ "$color" == "blue" ]; then
+       echo 34
+    elif [ "$color" == "purple" ]; then
+       echo 35
+    elif [ "$color" == "cyan" ]; then
+       echo 36
+    elif [ "$color" == "white" ]; then
+       echo 37
+    elif [ "$color" == "bred" ]; then
+       echo 41
+    elif [ "$color" == "bgreen" ]; then
+       echo 42
+    elif [ "$color" == "byello" ]; then
+       echo 43
+    elif [ "$color" == "bblue" ]; then
+       echo 44
+    elif [ "$color" == "bpurple" ]; then
+       echo 45
+    elif [ "$color" == "bcyan" ]; then
+       echo 46
+    elif [ "$color" == "bwhite" ]; then
+       echo 47
+    elif [ "$color" == "bold" ]; then
+       echo 1
+    elif [ "$color" == "underline" ]; then
+       echo 4
+    elif [ "$color" == "revers" ]; then
+       echo 7
+    fi
+}
+
+_k_color_echo() {
+    local fcolor bcolor color msg ii jj tmp chk
+    color=0
+    msg=($*)
+    jj=0
+    chk=0
+    for (( ii=0; ii<${#msg[*]} ; ii++ )); do
+         if echo ${msg[$ii]} | grep "^---no" >/dev/null; then
+             noenter=1
+             continue
+         fi
+         if echo ${msg[$ii]} | grep "^--[a-zA-Z0-9]" >/dev/null; then
+             if [ "$jj" == "1" ]; then
+                  (( $chk > 0 )) && echo -n " "
+                  if [ -n "$color" ]; then
+                      if [ "$color" == "none" ]; then
+                            echo -n "$tmp"
+                      else
+                            echo -en "\E[${color}m${tmp}\E[00m"
+                      fi
+                  else
+                      echo -n "${tmp}"
+                  fi
+                  tmp=""
+                  chk=$(($chk+1))
+             fi
+             jj=0
+             color=($(echo ${msg[$ii]}|sed "s/^--//g"|sed "s/://g"|sed "s/;//g"))
+             [ "$(echo $color | sed "s/^[-+0-9][0-9.]*//g" | wc -c)" == "1" ] || color=$(_k_color_type $color)
+         else
+             [ -n "$tmp" ] && tmp="$tmp ${msg[$ii]}" || tmp="${msg[$ii]}"
+             jj=1
+         fi
+    done
+    if [ -n "$color" ]; then
+        if [ "$jj" == "1" ]; then
+           (( $chk > 0 )) && echo -n " "
+           if [ "$color" == "none" ]; then
+                 echo -n "$tmp"
+           else
+                 echo -en "\E[${color}m${tmp}\E[00m"
+           fi
+        fi
+    else
+        echo -n "$tmp"
+    fi
+    [ "$noenter" == "1" ] || echo
+}
+
+#_k_color_echo --red $* --none
+#_k_color_echo --yello $* --none

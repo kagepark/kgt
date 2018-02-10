@@ -86,6 +86,7 @@ node_info() {
         ib_drv_ver=$([ -f /sys/module/$ib_drv/version ] && cat  /sys/module/$ib_drv/version || echo "-")
         printf "%16s - %-10s : %s\n" "" "Driver" "$ib_drv($ib_drv_ver)"
       fi
+      printf "%16s - %-10s : %s\n" "" "Type" "$([ -f /sys/class/infiniband/$ibn/hca_type ] && cat /sys/class/infiniband/$ibn/hca_type || echo "-")"
       printf "%16s - %-10s : %s\n" "" "Firmware" "$([ -f /sys/class/infiniband/$ibn/fw_ver ] && cat /sys/class/infiniband/$ibn/fw_ver || echo "-")"
       printf "%16s - %-10s : %s\n" "" "BoardID" "$([ -f /sys/class/infiniband/$ibn/board_id ] && cat /sys/class/infiniband/$ibn/board_id || echo "-")"
       printf "%16s - %-10s : %s\n" "" "Device" "$(basename $(readlink -f /sys/class/infiniband/$ibn/device) | sed "s/^0000://g")"
@@ -93,7 +94,7 @@ node_info() {
          printf "%16s + %-10s : %s\n" "" "Port" $port
          printf "%18s - %-8s : %s\n" "" "State" "$(cat /sys/class/infiniband/$ibn/ports/$port/state | awk '{print $2}')"
          printf "%18s - %-8s : %s\n" "" "PhyState" "$(cat /sys/class/infiniband/$ibn/ports/$port/phys_state | awk '{print $2}')"
-         printf "%18s - %-8s : %s\n" "" "Link" "$(cat /sys/class/infiniband/$ibn/ports/$port/link_layer)"
+         printf "%18s - %-8s : %s\n" "" "Layer" "$(cat /sys/class/infiniband/$ibn/ports/$port/link_layer)"
          printf "%18s - %-8s : %s\n" "" "Rate" "$(cat /sys/class/infiniband/$ibn/ports/$port/rate)"
       done
   done
