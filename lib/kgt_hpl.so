@@ -183,10 +183,10 @@ hpl() {
 
     [ -n "$percent" ] || percent=90
     [ -n "$mpi_type" ] || mpi_type=mpich
-    [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" ] && hpl_help
 
     [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
     if [ "$conf_hpl" == "1" ]; then
+       [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
        max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
     else
        PS_arr=($(grep "Ps" $hpl_path/HPL.dat | sed "s/Ps//g"))
