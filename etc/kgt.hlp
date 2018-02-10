@@ -11,3 +11,4 @@ dhcp_ip    # Find DHCP IP from mac
 sm         # Find OpenSM 
 ofed       # Handle OFED
 pingpong   # Testing Pingpong
+hpl        # Testing HPL

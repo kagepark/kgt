@@ -3,12 +3,167 @@
 # Kage Park
 # License : GPL
 ####################################
-hpl() {
-    echo "${FUNCNAME} <hostname> <opt>"
+hpl_data() {
+   local mem cpu precision hpl_path percent_mem
+   cpu=$1
+   nodes=$2
+   gmem=$3
+   percent_mem=$4
+   hpl_path=$5
+   precision=8
+   total_cores=$(($cpu * $nodes))
+   total_mem_kb=$(($gmem * 1024 * 1024 * 1024 * $nodes))
+   avail_mem=$(($total_mem_kb / $precision))
+   problem_size=$(( $(( $(echo "sqrt($avail_mem)" | bc) * $percent_mem )) / 100))
+   nb_size=$(($(($total_cores/$precision))/2))
+   for ii in 8 6 4 2 1; do
+        sm_nb_size=$(( $nb_size / $ii ))
+        if (( $sm_nb_size > 2 )); then
+            nb_size_num=$ii
+            break
+        fi
+   done
+   nb_size_str=$(for ((ii=1; ii<=$nb_size_num; ii++)); do 
+       printf "%s " $(($sm_nb_size * $ii)); 
+   done)
+
+   n_size_str=$(for ((ii=1; ii< $nb_size_num ; ii++)); do
+      printf "%s " $(($problem_size / $(($sm_nb_size * $nb_size_num * $ii)) ))
+   done)
+#   n_size=$(($problem_size / $nb_size))
+
+   p=(1 2 4 8 16 32 64 128 256 512 1024 2048 4096)
+   pqn=$(for ((ii=0; ii<${#p[*]}; ii++)); do if ((${p[$ii]} > $total_cores)); then echo $ii; break; fi  done)
+   [ -n "$pqn" ] || pqn=${#p[*]}
+   ps_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " ${p[$ii]}; done)
+   qs_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " $(($total_cores/${p[$ii]})); done)
+   swap_th=128 # or 64
+   ps_arr=($ps_str)
+   qs_arr=($qs_str)
+
+   max_mpi_num=0
+   for ((ii=0; ii<${$#ps_arr[*]}; ii++)); do
+       (( $(( ${ps_arr[$ii]} * ${qs_arr[*]} )) > $max_mpi_num )) && max_mpi_num=$(( ${ps_arr[$ii]} * ${qs_arr[*]} ))
+   done
+   
+
+
+   echo "HPLinpack benchmark input file
+Innovative Computing Laboratory, University of Tennessee
+HPL.out      output file name (if any)
+6            device out (6=stdout,7=stderr,file)
+$nb_size_num            # of problems sizes (N)
+$n_size_str      Ns
+$nb_size_num            # of NBs
+$nb_size_str         NBs
+0            PMAP process mapping (0=Row-,1=Column-major)
+$pqn            # of process grids (P x Q)
+$ps_str           Ps
+$qs_str           Qs
+16.0         threshold
+1            # of panel fact
+2            PFACTs (0=left, 1=Crout, 2=Right)
+1            # of recursive stopping criterium
+4            NBMINs (>= 1)
+1            # of panels in recursion
+2            NDIVs
+1            # of recursive panel fact.
+1            RFACTs (0=left, 1=Crout, 2=Right)
+1            # of broadcast
+1            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)
+1            # of lookahead depth
+1            DEPTHs (>=0)
+2            SWAP (0=bin-exch,1=long,2=mix)
+$swap_th           swapping threshold
+0            L1 in (0=transposed,1=no-transposed) form
+0            U  in (0=transposed,1=no-transposed) form
+1            Equilibration (0=no,1=yes)
+$precision            memory alignment in double (> 0) " > $hpl_path/HPL.dat
+
+
+    echo $max_mpi_num
+}
+
+r_peak() {
+   cpu_speed=$1
+   cpu=$2
+   nodes=$3
+   total_core=$(($cpu * $nodes))
+   bc -l <<< "($cpu_speed * $total_core * 4)"
+}
+
+efficiency() {
+   cpu_speed=$1
+   cpu=$2
+   nodes=$3
+   hpl_val=$4
+   r_peak_va=$(r_peak $cpu_speed $cpu $nodes)
+   printf "%3.1f" $(bc -l <<< "( $hpl_val/$r_peak_va ) * 100")
+   echo "%"
+}
+
+run_hpl() {
+    max_mpi_run=$1
+    hpl_path=$2
+    ib_opt=$3
+    mpi_type=$4
+    shift 4
+    hosts=$*
+    [ -n "$ib_opt" ] && ib_str="-iface ib0"
+    cd $hpl_path
+    [ -n "$mpi_type" ] && env load ${mpi_type}
+    time mpirun -np $max_mpi_run -hosts  $(echo $hosts | sed "s/ /,/g") $ib_str ./xhpl
+    [ -n "$mpi_type" ] && env unload ${mpi_type}
+}
+
+hpl_help() {
+    echo "${FUNCNAME} <-h hostname | -g groupname> <opt>"
     echo " <opt>"
-    echo "  -c : Check HPL"
-    echo "  -r : Run HPL Single node"
+#    echo "  -c : Check HPL"
+#    echo "  -r : Run HPL Single node"
     echo "  -m : Run HPL MPI"
-    echo "  -k : Kill HPL"
-    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
+    echo "  -cf : configure HPL.dat only, not run HPL"
+#    echo "  -k : Kill HPL"
+#    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
+    echo
+    echo " = Run/Config option ="
+    echo " -cn <core num>    : <core number> of node"
+    echo " -nn <node num>    : Running host number"
+    echo " -ms <memory size> : Free <memory size> of node"
+    echo " -pc <percent>     : Memory usage percent, default 90(%)"
+    echo " -hp <xhpl path>   : xhpl path"
+    echo " -mt <mpi type>    : intel,mpich,mvapich..., default mpich"
+    echo " -ib <ib name>     : ib0, mlx5_0,... , default Ethernet"
+    echo 
+    echo "* Not support intel,openmpi,... yet"
+    echo "* Not support mlx4_0,mlx5_0,HFI yet"
+    exit
+}
+
+hpl() {
+    _k_opt -cf 0 0 "$@" >/dev/null && conf_hpl=1
+    _k_opt -m 0 0 "$@" >/dev/null && run_hpl_mpi=1
+    cores=$(_k_opt -cn 1 0 "$@")
+    nodes=$(_k_opt -nn 1 0 "$@")
+    memory=$(_k_opt -ms 1 0 "$@")
+    percent=$(_k_opt -pc 1 0 "$@")
+    hpl_path=$(_k_opt -hp 1 0 "$@")
+    mpi_type=$(_k_opt -mt 1 0 "$@")
+    ib=$(_k_opt -ib 1 0 "$@")
+    hosts=$(_k_make_hostname "$@")
+
+    [ -n "$percent" ] || percent=90
+    [ -n "$mpi_type" ] || mpi_type=mpich
+    [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" ] && hpl_help
+
+    [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
+    max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path")
+    echo "==== $hpl_path/HPL.dat ===="
+    cat $hpl_path/HPL.dat
+    [ "$conf_hpl" == "1" ] && exit
+    if [ "$run_hpl_mpi" == "1" ]; then
+        [ -n "$hosts" ] || hpl_help
+        [ -f "$hpl_path/xhpl" ] || error_exit "$hpl_path/xhpl not found"
+        run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts
+    fi
 }
