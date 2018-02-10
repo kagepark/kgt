@@ -181,12 +181,21 @@ hpl() {
 
     [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
     max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path")
-    echo "==== $hpl_path/HPL.dat ===="
-    cat $hpl_path/HPL.dat
+    echo >>  $hpl_path/hpl.run.log
+    echo "==== $hpl_path/HPL.dat at $(date) ====" | tee -a $hpl_path/hpl.run.log
+    cat $hpl_path/HPL.dat | tee -a $hpl_path/hpl.run.log
     [ "$conf_hpl" == "1" ] && exit
     if [ "$run_hpl_mpi" == "1" ]; then
         [ -n "$hosts" ] || hpl_help
         [ -f "$hpl_path/xhpl" ] || error_exit "$hpl_path/xhpl not found"
-        run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts
+        echo "MPI Options:" >> $hpl_path/hpl.run.log
+        echo "MAX MPI RUN #:  $max_mpi_run" >> $hpl_path/hpl.run.log
+        echo "HPL Path: $hpl_path" >> $hpl_path/hpl.run.log
+        echo "IB Option: $ib" >> $hpl_path/hpl.run.log
+        echo "MPI App: $mpi_type" >> $hpl_path/hpl.run.log
+        echo "Run hosts : $hosts" >> $hpl_path/hpl.run.log
+        run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts | tee -a $hpl_path/hpl.run.log
+        echo
+        echo "Run log file: $hpl_path/hpl.run.log"
     fi
 }
