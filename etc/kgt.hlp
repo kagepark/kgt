@@ -12,3 +12,5 @@ sm         # Find OpenSM
 ofed       # Handle OFED
 pingpong   # Testing Pingpong
 hpl        # Testing HPL
+huge_pages # Setup huge pages
+flush      # Flush Cache

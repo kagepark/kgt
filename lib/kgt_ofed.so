@@ -12,6 +12,12 @@ _ofed_help() {
        echo "  -backup <backup image path> : It need '-d' option"
        echo "  -b : Burn image to rom, It need '-d' and '-i' option"
        echo "    -force : Force Burn Image to rom"
+       echo "  -ibd : Run ibdiag"
+       echo "    -p <port> : IB port, default 1"
+       echo "    -hca <dev> : IB device name, default mlx5_0"
+       echo "    -lw <Link> : IB device link(1x,2x,4x), default 4x"
+       echo "    -s <speed> : IB device speed(FDR:14,QDR:10,DDR:5), default 10"
+       echo "    -new       : use new ibutil, default old"
        exit
 }
 ofed() {
@@ -34,6 +40,29 @@ ofed() {
      fi
    elif _k_opt -fd 0 0 "$@" >/dev/null; then
      lspci -vv | grep -i mella
+   elif _k_opt -ibd 0 0 "$@" >/dev/null; then
+     rpm -qa | grep -e "ibutils" -e "ibutils2" > /dev/null || error_exit "Can not found IB Utils(OFED)"
+     _k_opt -new 0 0 "$@" >& /dev/null && new=1
+     _port=$(_k_opt -p 1 0 "$@")
+     [ -n "$_port" ] || _port=1
+     _link=$(_k_opt -lw 1 0 "$@")
+     [ -n "$_link" ] || _link="4x"
+     _spd=$(_k_opt -s 1 0 "$@")
+     [ -n "$_link" ] || _link="10"
+     _hca=$(_k_opt -hca 1 0 "$@")
+     if [ "$new" == "1" ]; then
+         [ -n "$_hca" ] || _hca=mlx5_0
+         ibdiag_bin=$(rpm -ql ibutils2 | grep "ibdiagnet$" | grep "/bin/")
+         [ -n "$ibdiag_bin" ] || error_exit "This system not support ibdiagnet"
+         $ibdiag_bin -P symbol_error_counter -lw $_link -ls $_spd -i $_hca -p $_port -pc
+     else
+         ibdiag_bin=$(rpm -ql ibutils | grep "ibdiagnet$" | grep "/bin/")
+         [ -n "$ibdiag_bin" ] || error_exit "This system not support old-ibdiagnet"
+         _count=$(_k_opt -c 1 0 "$@")
+         [ -n "$_count" ] || _count=100
+         [ -n "$_hca" ] || _hca=1
+         $ibdiag_bin -c $_count -lw $_link -ls $_spd -i $_hca -p $_port -pc
+     fi
    elif _k_opt -b 0 0 "$@" >/dev/null; then
      if [ -n "$fw_file" -a -f "$fw_file" -a -n "$fw_dev" ]; then
         x=$(mstflint -i $fw_file q)
