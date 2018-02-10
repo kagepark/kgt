@@ -3,7 +3,6 @@
 # Kage Park
 # License : GPL
 ####################################
-
 hpl_data() {
    local mem cpu precision hpl_path percent_mem
    cpu=$1
