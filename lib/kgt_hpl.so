@@ -125,11 +125,11 @@ hpl_help() {
     echo " <opt>"
 #    echo "  -c : Check HPL"
 #    echo "  -r : Run HPL Single node"
-    echo "  -m : Run HPL MPI"
+    echo "  -m  : Run HPL MPI"
     echo "  -cf : configure HPL.dat"
 #    echo "  -k : Kill HPL"
 #    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
-    echo " -nl               : make a new log file"
+    echo "  -nl : make a new log file"
     echo
     echo " = Run/Config option ="
     echo " -cn <core num>    : <core number> of node"
@@ -184,7 +184,7 @@ hpl() {
     [ -n "$percent" ] || percent=90
     [ -n "$mpi_type" ] || mpi_type=mpich
 
-    [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
+    [ -d "$hpl_path" ] || hpl_help
     if [ "$conf_hpl" == "1" ]; then
        [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
        max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
