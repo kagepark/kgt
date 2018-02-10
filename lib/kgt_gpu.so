@@ -1,0 +1,142 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+nbody() {
+   CUDA_SDK_PATH=/usr/local/nvidia/CUDA_SDK
+   export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib
+
+nbody=$1
+precision=$2
+hostmem=$3
+device=$4
+loop=$5
+[ -n "$nbody" ] || error_exit "$(basename $0) <nbody> [ <precision:1> <hostmem:1> ]"
+[ $nbody -lt 511 ] && error_exit make a over 512
+[ -d /proc/driver/nvidia ] || error_exit "Not ready NVIDIA device"
+
+    [ "$precision" == "1" ] && precision="-fp64" || precision=""
+[ "$hostmem" == "1" ] && hostmem="-hostmem" || hostmem=""
+if [ "$device" != "0" ]; then
+   devices="-device=$device"
+else
+   devices=""
+   numdevices="-numdevices=$(nvidia-smi -L |wc -l)"
+fi
+
+    ./nbody -benchmark -n=$nbody $precision $numdevices $devices $hostmem 
+}
+
+check_device() {
+    ls /dev/nvidia* > /dev/null 2>&1 || echo "not found"
+    nvidia-smi -L
+}
+
+gpu_info() {
+printf "%10s  %2s %12s %5s %9s %3s   %8s %5s %7s %5s %5s \n" "host" "#N" VER GCC DATE "DEV" "Name" "Ver" "Mem(MB)" "Cores" "GHz"
+for i in $_hosts; do
+  printf "%10s" "$i : "
+  ssh $i '( NC=$(for i in 1 2 3 4 5; do [ -d /proc/driver/nvidia/cards/ -o -d /proc/driver/nvidia/gpus ] && break || sleep 1; done; [ -d /proc/driver/nvidia/cards/ ] && (ls /proc/driver/nvidia/cards/ | wc -l) || (ls /proc/driver/nvidia/gpus | wc -l) );
+   printf "%2s" $NC;
+   V=( $(cat /proc/driver/nvidia/version | head -n 1) );
+   printf " %12s" ${V[7]};
+   GC=( $(cat /proc/driver/nvidia/version | tail -n 1) );
+   printf " %5s" ${GC[4]};
+   printf " %9s" ${GC[5]};
+
+
+ni=0
+CUDA_PATH=/usr/local/nvidia/CUDA_SDK
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64
+
+
+echo | $CUDA_PATH/deviceQuery 2>/dev/null | while read line ; do
+  TMP=( $(echo $line | sed "s/(//g") )
+  if [ "${TMP[0]}" == "Device" -a ${#TMP[*]} -le 4 ]; then
+    printf " %3s [ " "$ni"
+    printf "%8s" $(echo ${TMP[3]}|sed "s/\"//g")
+    ni=$(( $ni + 1 ))
+  elif [ "${TMP[0]}" == "CUDA" -a "${TMP[1]}" == "Driver"  -a "${TMP[2]}" == "Version" ]; then
+    printf " %5s" "${TMP[$(( ${#TMP[*]} - 1))]}"
+  elif [ "${TMP[0]}" == "Total" -a "${TMP[3]}" == "global" -a "${TMP[4]}" == "memory:" ]; then
+    printf " %7s"  "${TMP[5]}"
+  elif  echo ${TMP[*]} | grep Multiprocessors | grep Cores >& /dev/null ; then
+    printf " %5s" "${TMP[$(( ${#TMP[*]} - 3))]}"
+  elif echo ${TMP[*]} | grep GPU | grep -e Speed -e Rate >& /dev/null ; then
+    printf " %5s" "${TMP[$(( ${#TMP[*]} - 2))]}"
+  elif [ "${TMP[0]}" == "Compute" -a "${TMP[1]}" == "Mode:" ] ;then
+    printf " ]"
+  fi
+done
+
+   )'
+  echo ""
+done
+}
+
+gpu_mod() {
+lsmod |grep -w nvidia
+}
+
+gpu_usage() {
+ver=4.0.17
+#ver=4.1.21
+
+if [ "$ver" == "4.1.21" ]; then
+    printf "%17s   %6s %12s %5s\n" hostname power mem gpu
+    for i in $_hosts; do
+      printf "%17s : " $i
+      ssh $i '(nvidia-smi | grep MB | while read line; do aaa=( $line ); [ -n "${aaa[13]}" ] && printf "%6s %4s(%6s) %5s|" ${aaa[4]} ${aaa[8]} ${aaa[9]} ${aaa[13]} || printf "%8s(%6s)" ${aaa[3]} ${aaa[4]}; done )'
+      echo
+    done
+else
+#if [ "$ver" == "4.0.17" ]; then
+    #printf "%17s   [ %7s %4s %7s ]\n" hostname Mem GPU Power
+    printf "%17s   | %6s %3s %6s |\n" hostname "M(M)" "G(%)" "P(W)"
+    for i in $_hosts; do
+      printf "%17s : " $i
+      #ssh $i '(c=0; nvidia-smi -q | grep -e "Power Draw" -e "Gpu" -e "Memory" | grep -v Device | grep -v Usage | grep -v "MHz" | grep -v "N/A" | sed "s/Draw//g" | while read line; do
+      ssh $i '(c=0; nvidia-smi -q | grep -e "Power Draw" -e "Gpu" -e "Used" | grep -v Device | grep -v Usage | grep -v "MHz" | grep -v "N/A" | grep -v "Used GPU Memory" | sed "s/Draw//g" | while read line; do
+             if (( $c == 0 )); then
+                echo -n "|"
+             elif (( $(($c%3)) == 0 ));then
+                echo -n " | "
+             fi
+             [ $(($c%2)) == 1 ] && s=4 || s=6
+             aaa=($line)
+             #printf " %${s}s" "${aaa[2]}${aaa[3]}"
+             printf " %${s}s" "${aaa[2]}"
+             c=$(($c+1))
+       done)'
+       echo " |"
+    done
+fi
+}
+
+gpu_bandwidth_full() {
+CUDA_PATH=/opt/CUDA/4.0.17/NVIDIA_GPU_Computing_SDK/C/bin/linux/release
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib
+
+[ -d /proc/driver/nvidia ] && printf "%10s %10s %10s\n" $(echo y | numactl --physcpubind=10,11  $CUDA_PATH/bandwidthTest --memory=pinned 2>/dev/null | grep 33554432 | sed -e "s/33554432//g" ) || printf "%10s %10s %10s\n" - - -
+}
+
+gpu_bandwidth_dev() {
+echo "Test for each GPU device without numactl"
+printf "%17s   " hostname
+num_gpu=$(nvidia-smi -L | wc -l )
+for n in $(seq 0 $(( $num_gpu - 1 )) ); do
+  printf "|%10s %10s %10s" H2D D2H D2D
+done
+echo
+
+for i in $(seq 1 $LOOP); do
+  printf "%17s : " "$(hostname)($i)"
+
+  for n in $(seq 0 $(( $num_gpu - 1 )) ); do
+    printf "|%10s %10s %10s" $(echo y | $CUDA_PATH/bandwidthTest --device=$n --memory=pinned | grep 33554432 | sed -e "s/33554432//g" )
+  done
+  echo
+done
+}

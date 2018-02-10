@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+     set net_ip [lindex $argv 0]
+     set pass [lindex $argv 1]
+
+     set timeout -1
+     spawn scp -r /root/.ssh $net_ip:/root
+     expect {
+	"Are you sure you want to continue connecting (yes/no)?" {
+		send "yes\r"
+		expect "root@${net_ip}'s password: " {
+			send "${pass}\r"
+		}
+	}
+	"root@${net_ip}'s password: " {
+       		send "${pass}\r"
+	}
+     }
+     interact
