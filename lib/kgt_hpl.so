@@ -38,15 +38,15 @@ hpl_data() {
    ps_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " ${p[$ii]}; done)
    qs_str=$(for ((ii=0; ii<${#p[*]}; ii++)); do ((${p[$ii]} > $total_cores)) && break; printf "%s " $(($total_cores/${p[$ii]})); done)
    swap_th=128 # or 64
+
    ps_arr=($ps_str)
    qs_arr=($qs_str)
 
    max_mpi_num=0
-   for ((ii=0; ii<${$#ps_arr[*]}; ii++)); do
+   for ((ii=0; ii<${#ps_arr[*]}; ii++)); do
        (( $(( ${ps_arr[$ii]} * ${qs_arr[$ii]} )) > $max_mpi_num )) && max_mpi_num=$(( ${ps_arr[$ii]} * ${qs_arr[$ii]} ))
    done
-   
-
+   [ "$max_mpi_num" == "0" ] && error_exit "max_mpi_num is 0"
 
    echo "HPLinpack benchmark input file
 Innovative Computing Laboratory, University of Tennessee
@@ -184,7 +184,9 @@ hpl() {
     [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" ] && hpl_help
 
     [ -d "$hpl_path" ] || error_exit "$hpl_path not found"
-    max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path")
+    max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path") || error_exit "Error HPL config"
+
+    [ -n "$max_mpi_run" ] || error_exit "not found max mpi run number"
     echo >>  $hpl_path/hpl.run.log
     echo "==== $hpl_path/HPL.dat at $(date) ====" | tee -a $hpl_path/hpl.run.log
     cat $hpl_path/HPL.dat | tee -a $hpl_path/hpl.run.log
