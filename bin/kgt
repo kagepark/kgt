@@ -1,4 +1,3 @@
-#! /bin/bash
 #################################################################
 # Copyright (c) CEP Research Institude, All rights reserved. Since 2008
 # Kage New Shell Command/Library
@@ -55,6 +54,11 @@ _k_env() {
    fi
 }
 
+_k_history() {
+   export HISTTIMEFORMAT="%d/%m/%y %T "
+   history
+}
+
 gt() {
 if [ "$#" == "0" ]; then
   cat $_KGT_HOME/etc/kgt.hlp
@@ -95,8 +99,13 @@ fi
 }
 
 if [ "$(basename "$0")" == "${tag}${Ttag}" ]; then
-#!/bin/bash
-    ${Ttag} "$@" || exit $?
+   if [ "$1" == "history" ]; then
+      shift 1
+      _k_history $*
+   else
+      #!/bin/bash
+      ${Ttag} "$@" || exit $?
+   fi
 else
     # Loading this script like as shared library
     g_k_func="_k_load error_exit"
