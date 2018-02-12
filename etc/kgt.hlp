@@ -14,4 +14,5 @@ pingpong   # Testing Pingpong
 hpl        # Testing HPL
 huge_pages # Setup huge pages
 flush      # Flush Cache
+memtest    # Memory test
 history    # Display history with running time

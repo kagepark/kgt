@@ -21,8 +21,11 @@ pre_req() {
 
 build_pip() {
    if [ ! -n "$(whereis pip | awk -F: '{print $2}')" ]; then
-     curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
-     python get-pip.py
+     if curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py" ; then
+        python get-pip.py
+     else
+        easy_install pip
+     fi
    fi
 }
 
@@ -221,7 +224,16 @@ EOF
 
 
 build_memtest() {
-   echo
+   local share_dir
+   share_dir=$1
+   if src_dir=$(_extract $_KGT_HOME/share/memtester-4.2.2.tar.gz); then
+      cd $src_dir
+      make
+      mkdir -p $share_dir/memtest
+      cp -a memtester $share_dir/memtest
+      cd $org_path
+      rm -fr /tmp/kgt
+   fi
 }
 
 build_mpich() {
@@ -346,6 +358,32 @@ build_ctcs() {
    fi
 }
 
+build_ansible() {
+   yum -y install git build-essential python2 python2-devel libpng-devel SDL2_mixer-devel zlib-devel SDL2-devel ascii asciidoc python-jinja2 python-paramiko python2-cryptography sshpass python-setuptools python-setuptools-devel PyYAML
+   pip install jinja2
+   [ -d /tmp/kgt ] && rm -fr /tmp/kgt
+   mkdir -p /tmp/kgt
+   cd /tmp/kgt
+   git clone https://github.com/ansible/ansible.git
+   cd ansible
+   make rpm | tee /tmp/kgt/ansible.log
+   ansiblerpm=$(tail -n2 /tmp/kgt/ansible.log | head -n1)
+   rpm -ihv $ansiblerpm
+   cd $org_path
+   rm -fr /tmp/kgt
+   if [ -f /etc/ansible/hosts ]; then
+      if ! grep "127.0.0.1" /etc/ansible/hosts >& /dev/null; then
+         echo "[local]" > /etc/ansible/hosts
+         echo "127.0.0.1"  >> /etc/ansible/hosts
+      fi
+   else
+      echo "[local]" > /etc/ansible/hosts
+      echo "127.0.0.1"  >> /etc/ansible/hosts
+   fi
+   ansible all -m ping
+   ansible all -m ping -u root
+}
+
 setup() {
     _k_root
     share_dir_base=$(_k_opt -s 1 0 "$@")
@@ -368,5 +406,7 @@ setup() {
     [ -d $share_dir/stress_ng ] || build_stress_ng $share_dir
     [ -d $share_dir/iozone ] || build_iozone $share_dir
     [ -d $share_dir/ctcs ] || build_ctcs $share_dir
+    [ -d $share_dir/memtest ] || build_memtest $share_dir
+    # build_ansible 
     echo "Build and setup done"
 }

@@ -3,11 +3,17 @@
 # Kage Park
 # License : GPL
 ####################################
-memtest() {
-cd <logDir>
-cd <test dir>
-ln -s <memtest bin> 
-[ "$cpus" == "full" -o ! -n "$cpu" ] && cpus=$(cat /proc/cpuinfo | grep processor | wc -l)
+_run_memtest() {
+mem=$1
+log_dir=$2
+loop=$3
+[ -n "$loop" ] || loop=1
+[ -n "$log_dir" ] || log_dir=/tmp/memtest
+[ -n "$mem" ] || mem=95
+mkdir -p $log_dir
+cd $log_dir
+ln -sf /global/kgt/memtest/memtester .
+cpus=$(cat /proc/cpuinfo | grep processor | wc -l)
 memtm=$(( $(cat /proc/meminfo | grep -w "MemTotal:" | awk '{print $2}')/1024 ))
 memam=$(( $(cat /proc/meminfo | grep -w "Active:" | awk '{print $2}')/1024 ))
 memfm=$(( $memtm - $memam ))
@@ -15,6 +21,25 @@ memrm=$(( $(( $memfm * $mem )) / 100 ))
 memrunm=$(( $memrm / $cpus ))
 
 for i in $(seq 1 $cpus); do
-   ./memtester  ${memrunm}M   $loop  > memtester.${i}.log 2>&1 &
+   ./memtester  ${memrunm}M   $loop  > memtester.cpu_${i}.log 2>&1 &
 done
+
+}
+memtest() {
+  RSH_STR="ssh -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no "
+  if [ "$KGT_MODE" == "xcat" ]; then
+     RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
+  else
+     RSH_HOST=$(_k_make_hostname $*)
+  fi
+
+  for ii in $RSH_HOST; do
+     printf "%17s\n" "$ii"
+     trap 2
+     aa=_run_memtest
+     bb="$(declare -f $aa); $aa"
+     $RSH_STR $ii "$bb" 2>/dev/null || \
+     echo -n "Connection time out"
+     echo
+  done
 }
