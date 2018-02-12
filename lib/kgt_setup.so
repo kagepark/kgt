@@ -158,8 +158,8 @@ build_hpl() {
    env_file=$2
    if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
        cd $src_dir
-       env load ${env_file}
-       env load blas
+       _k_env load ${env_file}
+       _k_env load blas
 #       export BLAS_HOME=$share_dir/blas
        cp -a $_KGT_HOME/share/Make.${env_file}_gcc.hpl Make.${env_file}_gcc
        sed -i "/^TOPdir/c\
@@ -204,8 +204,8 @@ EOF
        echo "time mpirun -np [count] -hosts  [hostname1,hostname2,..] -iface ib0 ./xhpl" > $share_dir/hpl/${env_file}_gcc/run.sh
        cd $org_path
        rm -fr /tmp/kgt
-       env unload ${env_file}
-       env unload blas
+       _k_env unload ${env_file}
+       _k_env unload blas
        cat << EOF > $_KGT_HOME/modules/hpl
 #%Module 1.0
 #

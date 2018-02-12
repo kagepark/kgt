@@ -243,11 +243,11 @@ int main(int argc, char *argv[])
 EOF
 
   if [ "$kgt_mpi" == "1" ]; then
-     env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+     _k_env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
   fi
   mpicc /tmp/pingpong.c -o ${file_path}/pingpong
   rm -f /tmp/pingpong.c
-  [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
+  [ "$kgt_mpi" == "1" ] && _k_env unload ${mpi_type}
 }
 
 pingpong_run() {
@@ -264,7 +264,7 @@ pingpong_run() {
     [ -n "$hostfile" -a -f "$hostfile" ] || error_exit "$hostfile not found"
     [ -n "$count" ] || count=$(cat $hostfile| wc -l)
     if [ "$kgt_mpi" == "1" ]; then
-       env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+       _k_env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
     fi
     if [ "$mpi_type" == "mpich" ]; then
        if [ "$ib_dev" == "ib0" -o "$ib_dev" == "ib1" ]; then
@@ -282,7 +282,7 @@ pingpong_run() {
     fi
     cd $file_path
     $MPIRUN -np $count -hostfile $hostfile $ib_opt ./pingpong
-    [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
+    [ "$kgt_mpi" == "1" ] && _k_env unload ${mpi_type}
 }
 
 find_ib_bad() {
@@ -302,7 +302,7 @@ find_ib_bad() {
   fi
 
   if [ "$kgt_mpi" == "1" ]; then
-     env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
+     _k_env load ${mpi_type} || error_exit "Can't load ${mpi_type} modules. Please check with \'module list\' command"
   fi
 
   if [ "$mpi_type" == "mpich" ]; then
@@ -401,7 +401,7 @@ find_ib_bad() {
    fi
    (( $die == 2 )) && echo "${hostname[$hi]}" >> /tmp/kgt_pingpong_die.log
   done
-  [ "$kgt_mpi" == "1" ] && env unload ${mpi_type}
+  [ "$kgt_mpi" == "1" ] && _k_env unload ${mpi_type}
 }
 
 _pingpong_help() {

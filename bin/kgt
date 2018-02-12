@@ -45,7 +45,7 @@ _k_root() {
    [ "$(id -u)" == "0" ] || error_exit "Not root account"
 }
 
-env() {
+_k_env() {
    if [ -f /global/opt/modules/init/profile.sh ]; then
       source /global/opt/modules/init/profile.sh
       [ -d $_KGT_HOME/modules ] && MODULEPATH=${MODULEPATH}:$_KGT_HOME/modules
@@ -71,23 +71,28 @@ elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
 else
    if [ "$cmd" == "env" ]; then
        shift 1
-       env $*
+       _k_env $*
    else
      for cmdname in $cmd_str; do
       if [ "$cmd" == "$cmdname" ]; then
           _k_load ${FUNCNAME}_$cmd || break
           shift 1
           trap '' 2
-          $cmd "${@}"
+          if declare -F _k_${cmd} >&/dev/null; then
+             _k_$cmd "${@}"
+          else
+             $cmd "${@}"
+          fi
           trap 2
           exit
       fi
      done
-     echo "Unknown command ($cmd)"
+     if ! ${@} 2>/dev/null; then
+        echo "Unknown command ($cmd)"
+     fi
    fi
 fi
 }
-
 
 if [ "$(basename "$0")" == "${tag}${Ttag}" ]; then
 #!/bin/bash
