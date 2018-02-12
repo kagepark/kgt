@@ -1,6 +1,6 @@
 help or --help    # Help
 version           # display version
-setup      # Setup profile to /etc/profile.d/kgt.sh
+setup      # Setup profile to /etc/profile.d/kgt.sh and install tools source
 check      # Check base items on the system
 top        # display CPU utilization 
 temp       # display Physical CPU temperature
@@ -14,3 +14,4 @@ pingpong   # Testing Pingpong
 hpl        # Testing HPL
 huge_pages # Setup huge pages
 flush      # Flush Cache
+history    # Display history with running time
