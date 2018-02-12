@@ -210,10 +210,11 @@ hpl() {
     else
        NS_arr=($(grep " Ns$" $hpl_path/HPL.dat | sed "s/Ns//g"))
        NBS_arr=($(grep " NBs$" $hpl_path/HPL.dat | grep -v "#" | sed "s/NBs//g"))
-       max_memory_b=0
+       max_memory_k=0
        for ((ii=0; ii<${#NS_arr[*]}; ii++)); do
           for ((jj=0; jj<${#NBS_arr[*]}; jj++)); do
-             (( $(( ${NS_arr[$ii]} * ${NBS_arr[$jj]} )) > $max_memory_b )) && max_memory_b=$(( ${NS_arr[$ii]} * ${NBS_arr[$jj]} ))
+             tmp=$(( $(( ${NS_arr[$ii]} * $precision * ${NBS_arr[$jj]} * $precision)) / $((1024 * 1024)) ))
+             (( $tmp > $max_memory_k )) && max_memory_k=$tmp
           done
        done
 
@@ -223,7 +224,7 @@ hpl() {
        for ((ii=0; ii<${#PS_arr[*]}; ii++)); do
           (( $(( ${PS_arr[$ii]} * ${QS_arr[$ii]} )) > $max_mpi_run )) && max_mpi_run=$(( ${PS_arr[$ii]} * ${QS_arr[$ii]} ))
        done
-       memory=$(( $(( $(($max_memory_b * 8 * $max_mpi_run))/$((1024*1024*1024)) )) / ${#hosts_arr[*]} ))
+       memory=$(( $(( $(($max_memory_k * $max_mpi_run))/$((1024*1024)) )) / ${#hosts_arr[*]} ))
        cores=$(($max_mpi_run / ${#hosts_arr[*]} ))
     fi
     [ -n "$max_mpi_run" ] || error_exit "not found max mpi run number"
@@ -245,7 +246,6 @@ hpl() {
         echo "MPI App: $mpi_type" >> $hpl_path/hpl.run.log
         echo "Nodes: $nodes" >> $hpl_path/hpl.run.log
         echo "Run hosts : $hosts" >> $hpl_path/hpl.run.log
-exit
         run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts | tee -a $hpl_path/hpl.run.log
         echo
         echo "Run log file: $hpl_path/hpl.run.log"
