@@ -1,0 +1,17 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+stress() {
+    echo "${FUNCNAME} <hostname> <opt>"
+    echo " <opt>"
+    echo "  -c : Run CTCS"
+    echo "  -n : Run Network"
+    echo "  -m : Run Memory test"
+    echo "  -nbody : Run nbody"
+    echo "  -b : Run bonnie+ test"
+    echo "  -f : Run FIO test"
+    echo "  -d : Run HDD test"
+    echo "  -l <num>: Loop <num>"
+}
