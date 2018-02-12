@@ -199,12 +199,12 @@ hpl() {
     hosts_arr=($hosts)
 
     [ -n "$precision" ] || precision=8
-    [ -n "$percent" ] || percent=90
     [ -n "$mpi_type" ] || mpi_type=mpich
     [ -n "$nodes" ] || nodes=${#hosts_arr[*]}
 
     [ -d "$hpl_path" ] || hpl_help
     if [ "$conf_hpl" == "1" ]; then
+       [ -n "$percent" ] || percent=90
        [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
        max_mpi_run=$(hpl_data "$cores" "$nodes" "$memory" "$percent" "$hpl_path" "$precision") || error_exit "Error HPL config" 
     else
@@ -223,7 +223,7 @@ hpl() {
        for ((ii=0; ii<${#PS_arr[*]}; ii++)); do
           (( $(( ${PS_arr[$ii]} * ${QS_arr[$ii]} )) > $max_mpi_run )) && max_mpi_run=$(( ${PS_arr[$ii]} * ${QS_arr[$ii]} ))
        done
-       memory=$(( $(($max_memory_b * $max_mpi_run))/$((1024*1024*1024)) ))
+       memory=$(( $(( $(($max_memory_b * 8 * $max_mpi_run))/$((1024*1024*1024)) )) / ${#hosts_arr[*]} ))
        cores=$(($max_mpi_run / ${#hosts_arr[*]} ))
     fi
     [ -n "$max_mpi_run" ] || error_exit "not found max mpi run number"
@@ -235,16 +235,17 @@ hpl() {
         [ -n "$hosts" ] || hpl_help
         [ -f "$hpl_path/xhpl" ] || error_exit "$hpl_path/xhpl not found"
         echo "Cores/node: $cores" >> $hpl_path/hpl.run.log
-        echo "MemorySize/nodes: $memory GB" >> $hpl_path/hpl.run.log
-        echo "Usage percent of memory: $percent %" >> $hpl_path/hpl.run.log
-        echo "UsageSize/xhpl: $(( $(( $(($(($memory*1024))/$cores))* $percent))/100)) MB" >> $hpl_path/hpl.run.log
-        echo "MPI Options:" >> $hpl_path/hpl.run.log
+        echo "Max MemorySize/nodes: $memory GB" >> $hpl_path/hpl.run.log
+        [ -n "$percent" ] && echo "Usage percent of memory: $percent %" >> $hpl_path/hpl.run.log
+        [ -n "$percent" ] && echo "Max UsageSize/xhpl: $(( $(( $(($(($memory*1024))/$cores))* $percent))/100)) MB" >> $hpl_path/hpl.run.log
+        echo "MPI Options)" >> $hpl_path/hpl.run.log
         echo "MAX MPI RUN #:  $max_mpi_run" >> $hpl_path/hpl.run.log
         echo "HPL Path: $hpl_path" >> $hpl_path/hpl.run.log
         echo "IB Option: $ib" >> $hpl_path/hpl.run.log
         echo "MPI App: $mpi_type" >> $hpl_path/hpl.run.log
         echo "Nodes: $nodes" >> $hpl_path/hpl.run.log
         echo "Run hosts : $hosts" >> $hpl_path/hpl.run.log
+exit
         run_hpl "$max_mpi_run" "$hpl_path" "$ib" "$mpi_type" $hosts | tee -a $hpl_path/hpl.run.log
         echo
         echo "Run log file: $hpl_path/hpl.run.log"
