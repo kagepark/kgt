@@ -21,11 +21,37 @@ memrm=$(( $(( $memfm * $mem )) / 100 ))
 memrunm=$(( $memrm / $cpus ))
 
 for i in $(seq 1 $cpus); do
-   ./memtester  ${memrunm}M   $loop  > memtester.cpu_${i}.log 2>&1 &
+   ./memtester  ${memrunm}M   $loop  > memtester.$(hostname).cpu_${i}.log 2>&1 &
 done
 
 }
+
+_kill_memtest() {
+   killall -9 memtester
+}
+
+memtest_help() {
+   echo "memtest <-h hostname|-g groupname> <opt>"
+   echo
+   echo " -k : Kill memtster process"
+   echo
+   echo " Run options"
+   echo " [ -lp <log path> ] : default /tmp/memtest"
+   echo " [ -p <memory usage percent> ] : default 95"
+   echo " [ -l <loop> ] : default 1"
+   exit
+}
+
 memtest() {
+  _k_opt --help 0 0 "$@" >& /dev/null && memtest_help
+  log_dir=$(_k_opt -lp 1 0 "$@")
+  loop=$(_k_opt -l 1 0 "$@")
+  mem_per=$(_k_opt -p 1 0 "$@")
+  _k_opt -k 0 0 "$@" >& /dev/null && memtest_kill=1
+  [ -n "$mem_per" ] || mem_per=95
+  [ -n "$log_dir" ] || log_dir=/tmp/memtest
+  [ -n "$loop" ] || loop=1
+  
   RSH_STR="ssh -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no "
   if [ "$KGT_MODE" == "xcat" ]; then
      RSH_HOST=$(echo $(nodels $(echo $* | sed "s/ /,/g") | grep -v "^n0"))
@@ -36,8 +62,8 @@ memtest() {
   for ii in $RSH_HOST; do
      printf "%17s\n" "$ii"
      trap 2
-     aa=_run_memtest
-     bb="$(declare -f $aa); $aa"
+     [ "$memtest_kill" == "1" ] && aa=_kill_memtest || aa=_run_memtest
+     bb="$(declare -f $aa); $aa \"$mem_per\" \"$log_dir\" \"$loop\" "
      $RSH_STR $ii "$bb" 2>/dev/null || \
      echo -n "Connection time out"
      echo
