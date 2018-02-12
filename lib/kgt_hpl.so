@@ -139,15 +139,15 @@ hpl_help() {
     echo " <opt>"
 #    echo "  -c : Check HPL"
 #    echo "  -r : Run HPL Single node"
-    echo "  -m  : Run HPL MPI"
-    echo "  -cf : configure HPL.dat"
+    echo "  -m  : Run HPL MPI, minimum req: -h|-g -hp"
+    echo "  -cf : configure HPL.dat, minimum req: -cn -nn|-h|-g -ms -hp"
 #    echo "  -k : Kill HPL"
 #    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
     echo "  -nl : make a new log file"
     echo
     echo " = Run/Config option ="
     echo " -cn <core num>    : <core number> of node"
-    echo " -nn <node num>    : Running host number"
+    echo " -nn <node num>    : Running host number, default get from hostname"
     echo " -ms <memory size> : Free <memory size> of node"
     echo " -pc <percent>     : Memory usage percent, default 90(%)"
     echo " -pr <precision>   : precision(8,16), default 8"
@@ -196,10 +196,12 @@ hpl() {
     precision=$(_k_opt -pr 1 0 "$@")
     ib=$(_k_opt -ib 1 0 "$@")
     hosts=$(_k_make_hostname "$@")
+    hosts_arr=($hosts)
 
     [ -n "$precision" ] || precision=8
     [ -n "$percent" ] || percent=90
     [ -n "$mpi_type" ] || mpi_type=mpich
+    [ -n "$nodes" ] || nodes=${#hosts_arr[*]}
 
     [ -d "$hpl_path" ] || hpl_help
     if [ "$conf_hpl" == "1" ]; then
