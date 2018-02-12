@@ -38,9 +38,15 @@ build_pip_modules() {
 
 _extract() {
    file=$1
+   dest=$2
    [ -f "$file" ] || return 1
-   [ -d /tmp/kgt ] && rm -fr /tmp/kgt
-   mkdir -p /tmp/kgt
+   if [ -n "$dest" ]; then
+      dest_dir=$dest
+   else
+      dest_dir=/tmp/kgt
+      [ -d $dest ] && rm -fr $dest_dir
+   fi
+   mkdir -p $dest_dir
    ext=($(echo $file | sed "s/\./ /g"))
    if [ "${ext[$((${#ext[*]}-1))]}" == "bz2" ]; then
        tar_opt=jxvf
@@ -52,8 +58,8 @@ _extract() {
        echo "Unknown option"
        exit 1
    fi 
-   tar $tar_opt $file -C /tmp/kgt  > /tmp/kgt.extract.log 2>&1 || return 1
-   (cd /tmp/kgt/* && echo $(pwd) )
+   tar $tar_opt $file -C $dest_dir  > /tmp/kgt.extract.log 2>&1 || return 1
+   [ -n "$dest" ] || (cd $dest_dir/* && echo $(pwd) )
 }
 
 build_module() {
@@ -332,6 +338,13 @@ EOF
    fi
 }
 
+build_ctcs() {
+   local share_dir
+   share_dir=$1
+   if src_dir=$(_extract $_KGT_HOME/share/ctcs-1.3.1_03.tar.gz $share_dir); then
+       echo
+   fi
+}
 
 setup() {
     _k_root
@@ -351,8 +364,9 @@ setup() {
     [ -d $share_dir/blas ] || build_blas $share_dir
     [ -d $share_dir/hpl/mpich_gcc ] || build_hpl $share_dir mpich
     [ -d $share_dir/hpl/mvapich_gcc ] || build_hpl $share_dir mvapich
-    [ -d $share_dir/hpl/stress ] || build_stress $share_dir
-    [ -d $share_dir/hpl/stress_ng ] || build_stress_ng $share_dir
-    [ -d $share_dir/hpl/iozone ] || build_iozone $share_dir
+    [ -d $share_dir/stress ] || build_stress $share_dir
+    [ -d $share_dir/stress_ng ] || build_stress_ng $share_dir
+    [ -d $share_dir/iozone ] || build_iozone $share_dir
+    [ -d $share_dir/ctcs ] || build_ctcs $share_dir
     echo "Build and setup done"
 }
