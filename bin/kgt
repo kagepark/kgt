@@ -29,11 +29,14 @@ tag=k
 _help() {
     echo "Usage: $(basename $0) <command> <hostname> [<arg1> ....]"
     echo 
-    echo " <hostname>"
-    echo "  -g <group name>"
-    echo "  -h <hostname>"
+    echo " <hostname rule>"
+    echo "  -g <group name>           # default : according to KGT_HOSTNAME_DASH parameter in etc/kgt.cfg"
+    echo "  -g <group name> -nodash   # not using dash in hostname"
+    echo "  -g <group name> -dash     # using dash in hostname"
+    echo "  -h <hostname> [<hostname2>...]"
     echo "  -h <group name>-0[001-003]"
     echo "  -h <group name>-0[001,003]"
+    echo "  -h <group name>0[001-002,005-009]"
     echo
     echo " <command>"
     cat $_KGT_HOME/etc/kgt.hlp

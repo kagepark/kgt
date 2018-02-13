@@ -342,9 +342,11 @@ _k_make_hostname() {
    _k_opt -l 0 0 "$@" >/dev/null && _line_type=1
    _k_opt -w 0 0 "$@" >/dev/null && _line_type_word=1
    group_name=$(_k_opt -g 1 0 "$@")
+   _k_opt -dash 0 0 "$@" >/dev/null && group_use_dash=1
+   _k_opt -nodash 0 0 "$@" >/dev/null && group_use_dash=2
    hosts=$(_k_opt -h 1 0 "$@")
    if [ -n "$group_name" ]; then
-     _k_get_all_hostname $group_name
+     _k_get_all_hostname "$group_name" "$group_use_dash"
    elif [ -n "$hosts" ]; then
      _hosts=$(_k_misc_braket $hosts)
 
@@ -366,21 +368,29 @@ _k_make_hostname() {
 
 _k_get_all_hostname() {
    group_name=$1
+   use_hostname_dash=$2
+   [ "$use_hostname_dash" == "2" ] && KGT_HOSTNAME_DASH=2
    if [ -f /etc/hosts ]; then
       if [ -n "$group_name" ]; then
-         if [ "$KGT_HOSTNAME_DASH" == "1" ]; then
+         if [ "$KGT_HOSTNAME_DASH" == "1" -o "$use_hostname_dash" == "1" ]; then
             grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | grep " ${group_name}-[0-9]" | awk '{print $2}' | while read line; do 
                [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
             done
          else
-            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | grep " ${group_name}[0-9]" | awk '{print $2}' | while read line; do
-               [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
+            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | grep -e "^${group_name}[0-9]" -e "^${group_name}$" | while read line; do
+               echo $line
             done
          fi
       else
-         grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | while read line; do
-            [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
-         done
+         if [ "$KGT_HOSTNAME_DASH" == "1" -o "$use_hostname_dash" == "1" ]; then
+            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | while read line; do
+               [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
+            done
+         else
+            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | grep -e "^${group_name}[0-9]" -e "^${group_name}$" | while read line; do
+               echo $line
+            done
+         fi
       fi
    fi
 }
