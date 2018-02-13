@@ -27,19 +27,25 @@ tag=k
 
 
 _help() {
-    echo "Usage: $(basename $0) <command> <hostname> [<arg1> ....]"
+    no_cmd=$1
+    echo "Usage: $(basename $0) <command> <hostname rule> [<arg1> ....]"
     echo 
     echo " <hostname rule>"
+    echo "  <find hostname from /etc/hosts>"
     echo "  -g <group name>           # default : according to KGT_HOSTNAME_DASH parameter in etc/kgt.cfg"
     echo "  -g <group name> -nodash   # not using dash in hostname"
     echo "  -g <group name> -dash     # using dash in hostname"
+    echo "  <make hostname>"
     echo "  -h <hostname> [<hostname2>...]"
     echo "  -h <group name>-0[001-003]"
     echo "  -h <group name>-0[001,003]"
     echo "  -h <group name>0[001-002,005-009]"
+    echo "    -l                      # display hostname like as line, default new line"
     echo
+    if [ "$no_cmd" != "1" ]; then
     echo " <command>"
     cat $_KGT_HOME/etc/kgt.hlp
+    fi
     exit
 }
 
@@ -75,6 +81,12 @@ if [ "$cmd" == "help" -o "$cmd" == "--help" ]; then
     _help
 elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
     echo "$_KGT_VERSION"
+elif [ "$cmd" == "hostname" ]; then
+    shift 1
+    if [ "$#" == "0" ]; then
+       _help 1
+    fi
+    _k_make_hostname "$@"
 else
    if [ "$cmd" == "env" ]; then
        shift 1
