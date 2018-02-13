@@ -16,3 +16,4 @@ huge_pages # Setup huge pages
 flush      # Flush Cache
 memtest    # Memory test
 history    # Display history with running time
+diff       # diff file

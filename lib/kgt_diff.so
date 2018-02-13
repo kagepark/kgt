@@ -1,0 +1,54 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+diff_help() {
+      func_name=diff
+      echo "== Diff =="
+      echo "${func_name} <dest dir>               : Compare with current directory and <dest dir>"
+      echo "${func_name} <dest file> -s <src file>: Compare between <src file> and <dest file>"
+      echo "== Patch =="
+      echo "${func_name} <dest dir> -cp -pf <patch file> : Make a patch file from <dest dir> to current directory"
+      echo "${func_name} -pf <patch file>         : Patch from <patch file> to current directory"
+      echo "${func_name} -dr -pf <patch file>     : Dry-run for patch from <patch file> to current directory"
+      exit
+}
+diff() {
+   if [ "$#" == "0" ]; then
+      diff_help
+   fi
+   patch_file=$(_k_opt -pf 1 0 "$@")
+   src_file=$(_k_opt -s 1 0 "$@")
+   _k_opt -dr 0 0 "$@" >/dev/null && dry_run=1
+   _k_opt -cp 0 0 "$@" >/dev/null && create_patch=1
+   if [ ! -n "$patch_file" -o "$create_patch" == "1" ]; then
+      dest=$1
+      shift 1
+   fi
+
+   if [ -n "$patch_file" ]; then
+       if [ "$create_patch" == "1" ]; then
+          dest_dir=$(dirname $patch_file)
+          [ -d "$dest_dir" ] || error_exit "$dest_dir not found"
+          dest_full_dir=$(readlink -f $dest_dir)
+          cur_full_dir=$(readlink -f .)
+          [ "$dest_full_dir" == "$cur_full_dir" ] && error_exit "Please make a patch file to different directory. (not compare directory)"
+          /usr/bin/diff -Naru -x ".git" . $dest > $patch_file
+          echo "Create patch file to $patch_file"
+       else
+          [ -f "$patch_file" ] || error_exit "$patch_file not found"
+          if [ "$dry_run" == "1" ]; then
+             patch -p0 --dry-run < $patch_file
+          else
+             patch -p0 < $patch_file
+          fi
+       fi
+   elif [ -f "$dest" -o -f "$src_file" ]; then
+      /usr/bin/diff -up $src_file $dest
+   elif [ -n "$dest" ]; then
+      /usr/bin/diff -rup -x ".git" . $dest
+   else
+      diff_help
+   fi
+}
