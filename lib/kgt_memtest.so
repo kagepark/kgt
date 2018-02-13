@@ -64,8 +64,7 @@ memtest() {
      trap 2
      [ "$memtest_kill" == "1" ] && aa=_kill_memtest || aa=_run_memtest
      bb="$(declare -f $aa); $aa \"$mem_per\" \"$log_dir\" \"$loop\" "
-     $RSH_STR $ii "$bb" 2>/dev/null || \
-     echo -n "Connection time out"
+     $RSH_STR $ii "$bb" 2>/dev/null; [ "$?" == "255" ] && echo -n "Connection time out"
      echo
   done
 }

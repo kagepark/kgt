@@ -43,7 +43,7 @@ temp() {
   if [ "$RSH_CMD" == "ssh" ]; then
     for ii in $RSH_HOST; do
        printf "%17s " $ii
-       printf "%-5s\n" "$(echo $($RSH_STR $ii "$aabb; cpu_temp" 2>/dev/null || echo "ssh connection timeout"))"
+       printf "%-5s\n" "$(echo $($RSH_STR $ii "$aabb; cpu_temp" 2>/dev/null; [ "$?" == "255" ] && echo -n "Connection time out"))"
     done
   else
     $RSH_STR $RSH_HOST "$aabb; cpu_temp" | sort | while read line; do

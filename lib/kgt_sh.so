@@ -38,7 +38,7 @@ sh() {
   if [ "$RSH_CMD" == "ssh" ]; then
     for ii in $RSH_HOST; do
        printf "%17s " $ii
-       echo "$($RSH_STR $ii "$RSH_CMD_ON_NODE" 2>/dev/null || echo "ssh connection timeout")"
+       echo "$($RSH_STR $ii "$RSH_CMD_ON_NODE" 2>/dev/null ; [ "$?" == "255" ] && echo -n "Connection time out")"
     done
   else
     $RSH_STR $RSH_HOST "$RSH_CMD_ON_NODE"

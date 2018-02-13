@@ -56,7 +56,7 @@ top() {
   if [ "$RSH_CMD" == "ssh" ]; then
     for ii in $RSH_HOST; do
        printf "%17s " $ii
-       $RSH_STR $ii "$aabb; cpu_top" 2>/dev/null || echo "ssh connection timeout"
+       $RSH_STR $ii "$aabb; cpu_top" 2>/dev/null ; [ "$?" == "255" ] && echo -n "Connection time out"
        echo
     done
   else

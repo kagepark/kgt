@@ -19,8 +19,7 @@ flush() {
      trap 2
      aa=flush_caches
      bb="$(declare -f $aa); $aa"
-     $RSH_STR $ii "$bb" 2>/dev/null || \
-     echo -n "Connection time out"
+     $RSH_STR $ii "$bb" 2>/dev/null ; [ "$?" == "255" ] && echo -n "Connection time out"
      echo
   done
 }
