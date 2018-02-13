@@ -69,8 +69,7 @@ check() {
        printf \"%9s \" \$([ -f /sys/devices/virtual/dmi/id/product_name ] && cat /sys/devices/virtual/dmi/id/product_name || echo \"-\")
        printf \"%2s \" \$(ls /sys/class/net/ | grep \"ib[0-9]\" | wc -l)
        printf \"%-4s \" \"\$(chk=0; for ii in \$(ls -d /sys/class/infiniband/mlx*); do [ \"\$chk\" == \"1\" ] && echo \",\"; if [ -f \$ii/fw_ver ]; then cat \$ii/fw_ver; chk=1; fi; done; [ \"\$chk\" == \"0\" ] && echo \"-\")\"
-     " 2>/dev/null || \
-     echo -n "Connection time out"
+     " 2>/dev/null ; [ "$?" == "255" ] && echo -n "Connection time out"
      echo
   done
 }
