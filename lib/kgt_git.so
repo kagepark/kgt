@@ -140,7 +140,9 @@ _k_git_commit() {
            else
                git push
            fi
-           git push --tags
+           if git describe --tags --long >& /dev/null; then
+              git push --tags
+           fi
         fi
     else
         git pull
@@ -156,7 +158,9 @@ _k_git_commit() {
            else
                git push
            fi
-           git push --tags
+           if git describe --tags --long >& /dev/null; then
+              git push --tags
+           fi
         fi
     fi
 }
