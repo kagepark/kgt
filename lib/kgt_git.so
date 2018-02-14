@@ -72,6 +72,36 @@ _k_git() {
    fi
 }
 
+_k_git_merge() {
+   local merge_branch found_merge_branch
+   merge_branch=$1
+   [ -n "$merge_branch" ] || return 1
+   echo
+   git branch
+   echo
+   while read line; do
+      if [ -n "$(echo "$line" | grep "^* ")" ]; then
+          merge_dest=$(echo "$line" | awk '{print $2}')
+      else
+          if [ "$merge_branch" == "$(echo "$line" | awk '{print $1}')" ]; then
+              found_merge_branch=1
+              break
+          fi
+      fi
+   done < <(git branch)
+   if [ "$found_merge_branch" == "1" ]; then
+       echo -n "Do merge from \"$merge_branch\" to \"$merge_dest\" (y/[n])? "
+       read myn
+       if [ "$myn" == "y" ]; then
+            git merge $merge_branch
+            echo
+            echo "You need \"git push\" for upload merged data to git server"
+       fi
+   else
+       echo "$merge_branch not found"
+   fi
+}
+
 _k_git_clone() {
    local git_url
    git_url=$1
@@ -87,7 +117,7 @@ _k_git_clone() {
      elif [ "$branch_checkout" == "1" ]; then
          git branch -v -a 
          echo
-         echo -n "What branch do you want ?"
+         echo -n "What branch do you want ? "
          read br_name
          [ -n "$br_name" ] && git checkout "$br_name"
      fi
