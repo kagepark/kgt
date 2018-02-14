@@ -13,6 +13,8 @@ git [<opt> [<input>] ]
   -ver all       : show git version of all tree
   -ver all       : show git version of all tree
   -n             : Testing git command without real send data
+                 - If you want real data to push git server then run
+                 - 'kgt git push' or 'git push' command
   update         : update git source from remote
   commit         : commit and push to remote
   add <file>     : add file to git
