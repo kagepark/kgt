@@ -9,7 +9,7 @@ find_rpm() {
 }
 
 pre_req() {
-   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libgomp libquadmath libquadmath-devel libstdc++ libstdc++-devel
+   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libgomp libquadmath libquadmath-devel libstdc++ libstdc++-devel screen 
 
 #   for ii in gnuplot liberation-sans-fonts liberation-mono-fonts liberation-fonts-common liberation-serif-fonts; do
 #      if ! find_rpm $ii; then
