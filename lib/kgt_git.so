@@ -130,6 +130,7 @@ _k_git_commit() {
     dry_run=$1
     shift 1
     aa=$*
+echo ">> $dry_run, $aa"
     if [ -n "$aa" ]; then
         git pull $dry_run
         if [ "$init_ver" == "1" ]; then
