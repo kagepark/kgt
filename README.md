@@ -31,3 +31,4 @@ or
 -g test -nodash => it will find hostname not included dash
 -g test -dash   => it will find hostname (included dash)
 ##### Hostname rule end #####
+

@@ -80,7 +80,8 @@ cmd_str="$(cat $_KGT_HOME/etc/kgt.hlp | grep -v "^#" | awk '{print $1}')"
 if [ "$cmd" == "help" -o "$cmd" == "--help" ]; then
     _help
 elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
-    echo "$_KGT_VERSION"
+    git describe --tags
+    #echo "$_KGT_VERSION"
 elif [ "$cmd" == "hostname" ]; then
     shift 1
     if [ "$#" == "0" ]; then
