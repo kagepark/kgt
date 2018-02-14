@@ -9,7 +9,8 @@ _k_git_help() {
 git [<opt> [<input>] ]
 
   --help         : help
-  -ver           : show git version
+  -init_ver      : Set initial version
+  -ver all       : show git version of all tree
   -ver all       : show git version of all tree
   update         : update git source from remote
   commit         : commit and push to remote
@@ -35,6 +36,8 @@ _k_git() {
    declare -F ${FUNCNAME}_${cmd} >& /dev/null && shift 1
 
    opt=("$@")
+
+   _k_opt -init_ver 0 0 "${opt[@]}" >/dev/null && init_ver=1
 
    if _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
        _k_git_help
@@ -125,9 +128,11 @@ _k_git_commit() {
     aa=$*
     if [ -n "$aa" ]; then
         git pull
-        if ! git describe --tags --long >& /dev/null; then
+        if [ "$init_ver" == "1" ]; then
+           if ! git describe --tags --long >& /dev/null; then
              _k_git_set_version "0.1" "Initial version"
              init=1
+           fi
         fi
         if git commit -a -m "$aa"; then
            if [ "$init" == "1" ]; then
@@ -139,9 +144,11 @@ _k_git_commit() {
         fi
     else
         git pull
-        if ! git describe --tags --long >& /dev/null; then
+        if [ "$init_ver" == "1" ]; then
+           if ! git describe --tags --long >& /dev/null; then
              _k_git_set_version "0.1" "Initial version"
              init=1
+           fi
         fi
         if git commit -a; then
            if [ "$init" == "1" ]; then
