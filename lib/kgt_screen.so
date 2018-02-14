@@ -1,0 +1,71 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+_k_screen_help() {
+  echo "
+screen [<opt> [<input>] ]
+
+  --help : help
+  ls         : show screen list
+  --list     : show screen list ( same as ls)
+  -f <title> : find screen title and show the screen pid
+  -e <title> <cmd> : run <cmd> with <title> of screen
+  "
+  exit 1
+}
+
+_k_screen_bin () {
+   local _screen_bin
+   _screen_bin=$( which screen 2>/dev/null ) || return 1
+   [ -f $_screen_bin ] && echo $_screen_bin || return 1
+}
+
+_k_screen_ls() {
+    if screen_bin=$(_k_screen_bin); then
+        $screen_bin -ls  
+    else
+        error_exit "Not found screen command. please install screen pkg"
+    fi
+}
+
+_k_screen_find() {
+    local dest
+    dest="$1"
+    _k_screen_bin || error_exit "Not found screen command. please install screen pkg"
+    pid=$(_k_screen_ls | grep -e Detached -e Attached | awk '{print $1}' | awk -F. -v awk_dest=${dest}= '{if($2==awk_dest) print $1}')
+    [ -n "$pid" ] && echo $pid || return 1
+}
+
+_k_screen_exec() {
+    local _title cmd
+    _title=$1
+    shift 1
+    cmd=$@
+    if screen_bin=$(_k_screen_bin); then
+        $screen_bin -S ${_title}= $cmd
+    else
+        error_exit "Not found screen command. please install screen pkg"
+    fi
+}
+
+screen() {
+   opt=("$@")
+   if _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
+       _k_screen_help
+   elif find_name=$(_k_opt -f 1 0 "${opt[@]}"); then
+      _k_screen_find $get_val || return 1
+   elif _k_opt --list 0 0 "${opt[@]}">/dev/null; then
+      _k_screen_ls || return 1
+   elif exec=$(_k_opt -e 1 0 "${opt[@]}"); then
+      opt[0]=""
+      opt=(${opt[@]})
+      _k_screen_exec ${opt[@]} || return 1
+   elif declare -F  _k_screen_$1 >/dev/null; then
+      _k_screen_$1 || return 1
+   else
+      _k_screen_help
+   fi
+}

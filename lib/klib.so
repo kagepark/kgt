@@ -534,3 +534,118 @@ _k_color_echo() {
 
 #_k_color_echo --red $* --none
 #_k_color_echo --yello $* --none
+
+_k_is_int() {
+   [ -n "$*" ] || return 1
+   printf "%d" $* >& /dev/null && return 0 || return 1
+}
+
+_k_is_float() {
+   [ -n "$*" ] || return 1
+   printf "%f" $* >& /dev/null && return 0 || return 1
+}
+
+_k_is_block() {
+   [ -b "$1" ]  && return 0 || return 1
+}
+
+_k_is_word() {
+   local num
+   num=$(echo $*  | sed "s/[0-9]//g" | wc -w)
+   (( $num == 0 )) && return 1 || echo $num
+   return 0
+}
+
+_k_is_ip() {
+    [ "$(echo $1 | awk -F\. '{print NF}')" == "4" ] || return 1
+    _k_is_int "$(echo $1 | sed "s/\.//g")" || return 1
+    for ii in $(echo $1 | sed "s/\./ /g"); do
+        (( $ii >=0 && $ii <= 255 )) || return 1
+    done
+    return 0
+}
+
+_k_is_file() {
+    local file src dest dest_path
+    file=$1
+    src=$2
+    dest=$3
+    [ -n "$file" ] || return 1
+    if [ -n "$dest" ]; then
+       [ -n "$src" ] && dest_path="$dest/$(echo $(pwd)/ | sed "s#$src/##g")$file" || dest_path="$dest/$file"
+    else
+       dest_path="$file"
+    fi
+    [ -f" $dest_path" ] && return 0 || return 1
+}
+
+_k_is_directory() {
+    local file src dest dest_path
+    file=$1
+    src=$2
+    dest=$3
+    [ -n "$file" ] || return 1
+    if [ -n "$dest" ]; then
+       [ -n "$src" ] && dest_path="$dest/$(echo $(pwd)/ | sed "s#$src/##g")$file" || dest_path="$dest/$file"
+    else
+       dest_path="$file"
+    fi
+    [ -d "$dest_path" ] && return 0 || return 1
+}
+
+_k_is_what() {
+    local file chk
+    file=$1 
+    chk=$2
+    [ -n "$file" ] || return 1
+    if [ -L "$file" -a "$chk" != "1" ]; then
+       echo "$(_k_is_what $file 1) link" ; return 0
+    elif [ -b "$file" ]; then
+       echo "block" ; return 0
+    elif [ -c "$file" ]; then
+       echo "char" ; return 0
+    elif [ -d "$file" ]; then
+       echo "dir" ; return 0
+    elif [ -f "$file" ]; then
+       if file "$file" | grep "ISO 9660" >& /dev/null; then
+           echo iso ; return 0
+       elif file "$file" | grep -i -e video -e movie >& /dev/null; then
+           echo mov ; return 0
+       elif file "$file" | grep -i image >& /dev/null; then
+           echo jpg ; return 0
+       elif file "$file" | grep "filesystem data" >& /dev/null; then
+           echo img ; return 0
+       elif file "$file" | grep "LVM Snapshot" >& /dev/null; then
+           echo snap ; return 0
+       elif file "$file" | grep "POSIX shell" >& /dev/null; then
+           echo shell ; return 0
+       elif file "$file" | grep "64-bit LSB executable" >& /dev/null; then
+           echo "bin(64)" ; return 0
+       elif file "$file" | grep "LSB executable" >& /dev/null; then
+           echo "bin(32)" ; return 0
+       elif file "$file" | grep "64-bit LSB relocatable" >& /dev/null; then
+           modinfo "$file" >& /dev/null && echo "kmod(64)" || \
+           echo "obj(64)" ; return 0
+       elif file "$file" | grep "LSB relocatable" >& /dev/null; then
+           modinfo "$file" >& /dev/null && echo "kmod(32)" || \
+           echo "obj(32)" ; return 0
+       elif file "$file" | grep "64-bit LSB shared object" >& /dev/null; then
+           echo "sharedlib(64)" ; return 0
+       elif file "$file" | grep "LSB shared object" >& /dev/null; then
+           echo "sharedlib(32)" ; return 0
+       elif file "$file" | grep "current ar archive" >& /dev/null; then
+           echo staticlib ; return 0
+       else
+           echo file ; return 0
+       fi
+    elif _k_is_int "$file" >& /dev/null; then
+       echo int ; return 0
+    elif _k_is_float "$file" >& /dev/null; then
+       echo float ; return 0
+    elif _k_is_word "$file" >& /dev/null; then
+       echo word ; return 0
+    else
+         echo unknown
+         return 1
+    fi
+}

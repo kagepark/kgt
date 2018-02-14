@@ -6,20 +6,37 @@
 _ofed_help() {
        echo "ofed <option>"
        echo " <option>"
-       echo "  -fd  : Find device id"
+       echo "  -show_reg_mem <ib module name> : show registered memory size of ib"
+       echo "  -fd             : Find device id"
        echo "  -d <device id>  : display <device id> information"
        echo "  -i <image file> : display <image file> information"
        echo "  -backup <backup image path> : It need '-d' option"
-       echo "  -b : Burn image to rom, It need '-d' and '-i' option"
-       echo "    -force : Force Burn Image to rom"
-       echo "  -ibd : Run ibdiag"
-       echo "    -p <port> : IB port, default 1"
-       echo "    -hca <dev> : IB device name, default mlx5_0"
-       echo "    -lw <Link> : IB device link(1x,2x,4x), default 4x"
-       echo "    -s <speed> : IB device speed(FDR:14,QDR:10,DDR:5), default 10"
-       echo "    -new       : use new ibutil, default old"
+       echo "  -b              : Burn image to rom, It need '-d' and '-i' option"
+       echo "    -force        : Force Burn Image to rom"
+       echo "  -ibd            : Run ibdiag"
+       echo "    -p <port>     : IB port, default 1"
+       echo "    -hca <dev>    : IB device name, default mlx5_0"
+       echo "    -lw <Link>    : IB device link(1x,2x,4x), default 4x"
+       echo "    -s <speed>    : IB device speed(FDR:14,QDR:10,DDR:5), default 10"
+       echo "    -new          : use new ibutil, default old"
        exit
 }
+
+_k_ib_registered_memory() {
+    ib_module_name=$1
+    [ -n "$ib_module_name" ] || return 1
+    [ -f /sys/module/$ib_module_name/parameters/log_mtts_per_seg ] || return 1
+    local log_mtts_per_seg log_num_mtt kB
+    kB=1024
+    log_mtts_per_seg_orig=$(cat /sys/module/$ib_module_name/parameters/log_mtts_per_seg)
+    log_num_mtt_orig=$(cat /sys/module/$ib_module_name/parameters/log_num_mtt)
+    [ "$log_mtts_per_seg_orig" == "0" ] && log_mtts_per_seg=3 || log_mtts_per_seg=$log_mtts_per_seg_orig
+    [ "$log_num_mtt_orig" == "0" ] && log_num_mtt=20 || log_num_mtt=$log_num_mtt_orig
+    echo "log_mtts_per_seg : $log_mtts_per_seg($log_mtts_per_seg_orig)"
+    echo "log_num_mtt : $log_num_mtt($log_num_mtt_orig)"
+    echo "Registered memory size : $(_k_misc_print_byte $(echo "(2^$log_num_mtt) * (2^$log_mtts_per_seg) * (4 * $kB)" | bc ))"
+}
+
 ofed() {
    _k_root
    if [ "$#" == "0" ]; then
@@ -28,7 +45,9 @@ ofed() {
    fw_file=$(_k_opt -i 1 0 "$@")
    fw_dev=$(_k_opt -d 1 0 "$@")
    _k_opt -force 0 0 "$@" >/dev/null && force_burn=1
-   if backup_file=$(_k_opt -backup 1 0 "$@"); then
+   if ib_module_name=$(_k_opt -show_reg_mem 1 0 "$@"); then
+     _k_ib_registered_memory $ib_module_name
+   elif backup_file=$(_k_opt -backup 1 0 "$@"); then
      if [ -f "$backup_file" ]; then
         echo "Already $backup_file exist"
         exit

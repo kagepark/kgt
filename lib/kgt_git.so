@@ -3,3 +3,234 @@
 # Kage Park
 # License : GPL
 ####################################
+
+_k_git_help() {
+  echo "
+git [<opt> [<input>] ]
+
+  --help         : help
+  -ver           : show git version
+  -ver all       : show git version of all tree
+  update         : update git source from remote
+  commit         : commit and push to remote
+  add <file>     : add file to git
+  info           : similar as svn info
+  find <string>  : find <string> in the git source. same as git's grep command
+  set_version <version>   : make a <version> to git tag (source tree)
+  version_files <version> : show file list in the <version>
+  recover <file> : recover deleted <file>
+  del_list       : show deleted file list
+  log            : show log with description
+  log detail     : show log with diff source
+  log simple     : show log with file status
+  log date       : show log with date with description
+  diff [--stat] [<r1> [<r2>]] [<file>]  : show diff files    --stat       : diff summary
+  "
+  exit 1
+}
+
+_k_git() {
+   local cmd rcmd opt get_val
+   echo $1 | grep "^-" >& /dev/null || cmd=$1
+   declare -F ${FUNCNAME}_${cmd} >& /dev/null && shift 1
+
+   opt=("$@")
+
+   if _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
+       _k_git_help
+   elif get_opt=$(_k_opt -ver 1 0 "${opt[@]}"); then
+      _k_git_version $get_opt || return 1
+   elif _k_opt -ver 0 0 "${opt[@]}" >& /dev/null; then
+      _k_git_version || return 1
+   else
+      if declare -F ${FUNCNAME}_${cmd} >& /dev/null; then          ${FUNCNAME}_${cmd} "${opt[@]}"
+      else
+          git ${opt[@]}
+      fi
+      exit 
+   fi
+}
+
+
+_k_git_info() {
+   git config -l | grep "remote.origin.url"
+   echo "Version: $(git describe --tags --long 2>/dev/null || echo "-")"
+   git log master -n 1 --pretty="format:Commited by %cN at %cd" 2>/dev/null
+   echo
+   git status
+}
+
+_k_git_get_ver() {
+    local sha
+    sha=$1
+    ver_arr=($(git describe --tags $sha 2>/dev/null | sed "s/-/ /g"))
+    ((${#ver_arr[*]} == 0)) && return 1
+    if ((${#ver_arr[*]} > 2)); then
+          ver_num=$((${#ver_arr[*]}-2))
+          for ((ii=0;ii<$ver_num;ii++)); do
+            (( $ii < $(($ver_num-1)) )) && ver_name="${ver_name}${ver_arr[$ii]}-" || ver_name="${ver_name}${ver_arr[$ii]}"
+          done
+    else
+          ver_name=${ver_arr[0]}
+    fi
+    echo $ver_name
+}
+
+_k_git_get_rev() {
+    local sha
+    sha=$1
+    ver_arr=($(git describe --tags $sha 2>/dev/null | sed "s/-/ /g"))
+    ((${#ver_arr[*]} == 0)) && return 1
+    if ((${#ver_arr[*]} > 2)); then
+          echo ${ver_arr[$((${#ver_arr[*]}-2))]}
+    else
+          echo 0
+    fi
+}
+
+_k_git_show_all() {
+    local ver sha
+    git log --oneline --decorate=short | while read line ; do
+        sha=$(echo $line | awk '{print $1}')
+        if ver=$(_k_git_get_ver $sha); then
+            echo "${ver}-$(_k_git_get_rev $sha) $line"
+        fi
+    done
+}
+
+_k_git_show_one() {
+    local ver sha
+    git log --oneline --decorate=short | while read line ; do
+       sha=$(echo $line | awk '{print $1}')
+
+       if ver=$(_k_git_get_ver $sha); then
+           [ "$old_ver" == "$ver" ] || echo "${ver}-$(_k_git_get_rev $sha) $line"
+           old_ver=$ver
+       fi
+    done
+}
+
+_k_git_version() {
+    local aa
+    aa=$1
+    if [ "$aa" == "all" ]; then
+        _k_git_show_all
+    else
+        _k_git_show_one
+    fi
+}
+
+_k_git_commit() {
+    local aa
+    aa=$*
+    if [ -n "$aa" ]; then
+        git pull
+        if ! git describe --tags --long >& /dev/null; then
+             _k_git_set_version "0.1" "Initial version"
+             init=1
+        fi
+        if git commit -a -m "$aa"; then
+           if [ "$init" == "1" ]; then
+               git push -u origin master
+           else
+               git push
+           fi
+           git push --tags
+        fi
+    else
+        git pull
+        if ! git describe --tags --long >& /dev/null; then
+             _k_git_set_version "0.1" "Initial version"
+             init=1
+        fi
+        if git commit -a; then
+           if [ "$init" == "1" ]; then
+               git push -u origin master
+           else
+               git push
+           fi
+           git push --tags
+        fi
+    fi
+}
+
+_k_git_log() {
+    local aa
+    aa=$1
+    if  [ "$aa" == "detail" ]; then
+        git log -p
+    elif [ "$aa" == "simple" ]; then
+        git log --stat
+    elif [ "$aa" == "date" ]; then
+        git log --pretty='format:%Cgreen%H %Cred%ai %Creset- %s'
+    else
+        git log --oneline --decorate=short
+    fi
+}
+
+_k_git_del_list() {
+    git ls-files --deleted
+}
+
+_k_git_recover() {
+    local aa
+    aa=$1
+    [ -n "$aa" ] || return 1
+    if [ "$aa" == "all" ]; then
+        for ii in $(git ls-files --deleted); do
+              echo "Recover $ii"
+              git checkout $ii
+        done
+    else
+        git checkout $aa
+    fi
+}
+
+_k_git_update() {
+    _k_git_recover all
+    git pull
+}
+
+_k_git_version_files() {
+    local aa
+    aa=$1
+    git ls-tree -l -r $aa
+}
+
+_k_git_set_version() {
+    local ver msg
+    ver=$1
+    shift 1
+    msg=$*
+    [ -n "$ver" ] || return 1
+    echo $ver | grep "^v" >& /dev/null && ver=$(echo $ver | sed "s/^v//g")
+    if [ -n "$msg" ]; then
+        git tag -a v$ver -m "$msg"
+    else
+        git tag -a v$ver
+    fi
+}
+
+_k_git_grep() {
+   local aa
+   aa=$*
+   if [ ! -n "$aa" ]; then
+       echo "
+* find(grep) words in c or h files
+git grep -e '<string>' -- '*.[ch]'
+
+* grep '#include' and fcntl.h or mysql.h
+git grep -e '#include' --and \( -e fcntl.h -e mysql.h \)
+
+* grep MYSQ word
+git grep --all-match -e MYSQ
+       "
+       exit
+   fi
+   git grep $*
+}
+
+_k_git_find() {
+    _k_git_grep $*
+}
+
