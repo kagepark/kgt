@@ -27,5 +27,7 @@ when you want directly handle the binary file then you can use above directory
 or
 
 # Find hostname from /etc/hosts file
--g test => It will find all of test-XXXXX hostname from /etc/hosts file.
+-g test         => It will find all of test-XXXXX hostname from /etc/hosts file.
+-g test -nodash => it will find hostname not included dash
+-g test -dash   => it will find hostname (included dash)
 ##### Hostname rule end #####
