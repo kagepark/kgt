@@ -157,13 +157,9 @@ _k_git_commit() {
            fi
         fi
         if git commit $dry_run -a;  then
-
-echo ">dry_run: $dry_run"
            if [ "$init" == "1" ]; then
                git push $dry_run -u origin master
            else
-echo                ">git push $dry_run "
-sleep 10
                git push $dry_run 
            fi
            if git describe --tags --long >& /dev/null; then
