@@ -34,6 +34,9 @@ git <opt> [<input>]
   diff [--stat] [<r1> [<r2>]] [<file>]  
                          : show diff files    
         --stat           : diff summary
+  diff [--stat] [<branch1>..[<branch2>]]
+                         : show diff between <branch1> and <branch2>
+        --stat           : diff summary
   "
   exit 1
 }
