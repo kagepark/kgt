@@ -12,6 +12,7 @@ git [<opt> [<input>] ]
   -init_ver      : Set initial version
   -ver all       : show git version of all tree
   -ver all       : show git version of all tree
+  -n             : Testing git command without real send data
   update         : update git source from remote
   commit         : commit and push to remote
   add <file>     : add file to git
@@ -38,6 +39,7 @@ _k_git() {
    opt=("$@")
 
    _k_opt -init_ver 0 0 "${opt[@]}" >/dev/null && init_ver=1
+   _k_opt -n 0 0 "${opt[@]}" >/dev/null && dry_run="-n"
 
    if _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
        _k_git_help
@@ -124,42 +126,44 @@ _k_git_version() {
 }
 
 _k_git_commit() {
-    local aa
+    local dry_run aa
+    dry_run=$1
+    shift 1
     aa=$*
     if [ -n "$aa" ]; then
-        git pull
+        git pull $dry_run
         if [ "$init_ver" == "1" ]; then
            if ! git describe --tags --long >& /dev/null; then
-             _k_git_set_version "0.1" "Initial version"
+             _k_git_set_version "$dry_run" "0.1" "Initial version"
              init=1
            fi
         fi
         if git commit -a -m "$aa"; then
            if [ "$init" == "1" ]; then
-               git push -u origin master
+               git push -u $dry_run origin master
            else
-               git push
+               git push $dry_run
            fi
            if git describe --tags --long >& /dev/null; then
-              git push --tags
+              git push $dry_run --tags
            fi
         fi
     else
-        git pull
+        git pull $dry_run
         if [ "$init_ver" == "1" ]; then
            if ! git describe --tags --long >& /dev/null; then
-             _k_git_set_version "0.1" "Initial version"
+             _k_git_set_version "$dry_run" "0.1" "Initial version"
              init=1
            fi
         fi
-        if git commit -a; then
+        if git commit -a $dry_run ; then
            if [ "$init" == "1" ]; then
-               git push -u origin master
+               git push $dry_run -u origin master
            else
-               git push
+               git push $dry_run 
            fi
            if git describe --tags --long >& /dev/null; then
-              git push --tags
+              git push $dry_run --tags
            fi
         fi
     fi
@@ -209,7 +213,9 @@ _k_git_version_files() {
 }
 
 _k_git_set_version() {
-    local ver msg
+    local ver msg dry_run
+    dry_run=$1
+    shift 1
     ver=$1
     shift 1
     msg=$*
