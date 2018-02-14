@@ -6,29 +6,34 @@
 
 _k_git_help() {
   echo "
-git [<opt> [<input>] ]
+git <opt> [<input>]
 
-  --help         : help
-  -init_ver      : Set initial version
-  -ver all       : show git version of all tree
-  -ver all       : show git version of all tree
-  -n             : Testing git command without real send data
-                 - If you want real data to push git server then run
-                 - 'kgt git push' or 'git push' command
-  update         : update git source from remote
-  commit         : commit and push to remote
-  add <file>     : add file to git
-  info           : similar as svn info
-  find <string>  : find <string> in the git source. same as git's grep command
-  set_version <version>   : make a <version> to git tag (source tree)
-  version_files <version> : show file list in the <version>
-  recover <file> : recover deleted <file>
-  del_list       : show deleted file list
-  log            : show log with description
-  log detail     : show log with diff source
-  log simple     : show log with file status
-  log date       : show log with date with description
-  diff [--stat] [<r1> [<r2>]] [<file>]  : show diff files    --stat       : diff summary
+  --help                 : help
+  -init <email> <name>   : config global value
+  -init_ver              : Set initial version
+  -ver all               : show git version of all tree
+  -ver all               : show git version of all tree
+  -n                     : Testing git command without real send data
+                         - If you want real data to push git server then run
+                         - 'kgt git push' or 'git push' command
+  clone                  : clone from git site
+    -b [<branch name>]   : if you want clone with branch then add '-b' option
+  update                 : update git source from remote
+  commit                 : commit and push to remote
+  add <file>             : add file to git
+  info                   : similar as svn info
+  find <string>          : find <string> in the git source. same as git's grep command
+  set_version <version>  : make a <version> to git tag (source tree)
+  version_files <version>: show file list in the <version>
+  recover <file>         : recover deleted <file>
+  del_list               : show deleted file list
+  log                    : show log with description
+  log detail             : show log with diff source
+  log simple             : show log with file status
+  log date               : show log with date with description
+  diff [--stat] [<r1> [<r2>]] [<file>]  
+                         : show diff files    
+        --stat           : diff summary
   "
   exit 1
 }
@@ -43,14 +48,20 @@ _k_git() {
    _k_opt -init_ver 0 0 "${opt[@]}" >/dev/null && init_ver=1
    _k_opt -n 0 0 "${opt[@]}" >/dev/null && dry_run="-n"
 
-   if _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
+   if [ "${#opt[@]}" == "0" -a ! -n "$cmd" ]; then
        _k_git_help
+   elif _k_opt --help 0 0 "${opt[@]}" >/dev/null; then
+       _k_git_help
+   elif _k_opt --init 0 0 "${opt[@]}" >/dev/null; then
+       shift 1
+       _k_git_init "$1" "$2"
    elif get_opt=$(_k_opt -ver 1 0 "${opt[@]}"); then
       _k_git_version $get_opt || return 1
    elif _k_opt -ver 0 0 "${opt[@]}" >& /dev/null; then
       _k_git_version || return 1
    else
-      if declare -F ${FUNCNAME}_${cmd} >& /dev/null; then          ${FUNCNAME}_${cmd} "${opt[@]}"
+      if declare -F ${FUNCNAME}_${cmd} >& /dev/null; then          
+          ${FUNCNAME}_${cmd} "${opt[@]}"
       else
           git ${opt[@]}
       fi
@@ -58,6 +69,37 @@ _k_git() {
    fi
 }
 
+_k_git_clone() {
+   local git_url
+   git_url=$1
+   branch_name=$(_k_opt -b 1 0 "$@")
+   _k_opt -b 0 0 "$@" >/dev/null && branch_checkout=1
+   [ -n "$git_url" ] || return 1
+   git clone $git_url
+   clone_dir=$(basename $git_url | sed "s/.git//g")
+   if [ -d "$clone_dir" ]; then
+     cd $clone_dir
+     if [ -n "$branch_name" ]; then
+         git checkout "$br_name"
+     elif [ "$branch_checkout" == "1" ]; then
+         git branch -v -a 
+         echo
+         echo -n "What branch do you want ?"
+         read br_name
+         [ -n "$br_name" ] && git checkout "$br_name"
+     fi
+   fi
+}
+
+_k_git_init() {
+   local email name
+   email=$1
+   name=$2
+   [ ! -n "$email" -o ! -n "$name" ] && return 1
+   git config --global user.email "$email"
+   config --global user.name  "$name"
+   git config --global push.default upstream
+}
 
 _k_git_info() {
    git config -l | grep "remote.origin.url"
