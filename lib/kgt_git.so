@@ -130,7 +130,6 @@ _k_git_commit() {
     dry_run=$1
     shift 1
     aa=$*
-echo ">> $dry_run, $aa"
     if [ -n "$aa" ]; then
         git pull $dry_run
         if [ "$init_ver" == "1" ]; then
@@ -141,7 +140,7 @@ echo ">> $dry_run, $aa"
         fi
         if git commit -a -m "$aa"; then
            if [ "$init" == "1" ]; then
-               git push -u $dry_run origin master
+               git push $dry_run -u origin master
            else
                git push $dry_run
            fi
@@ -157,10 +156,13 @@ echo ">> $dry_run, $aa"
              init=1
            fi
         fi
-        if git commit -a $dry_run ; then
+        if git commit $dry_run -a;  then
+echo ">dry_run: $dry_run"
            if [ "$init" == "1" ]; then
                git push $dry_run -u origin master
            else
+echo                ">git push $dry_run "
+sleep 10
                git push $dry_run 
            fi
            if git describe --tags --long >& /dev/null; then
