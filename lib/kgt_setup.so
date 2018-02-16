@@ -9,7 +9,7 @@ find_rpm() {
 }
 
 pre_req() {
-   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libgomp libquadmath libquadmath-devel libstdc++ libstdc++-devel screen 
+   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libquadmath libquadmath-devel libstdc++ libstdc++-devel screen 
 
 #   for ii in gnuplot liberation-sans-fonts liberation-mono-fonts liberation-fonts-common liberation-serif-fonts; do
 #      if ! find_rpm $ii; then
@@ -386,6 +386,8 @@ build_ansible() {
 
 setup() {
     _k_root
+    sed -i "/^_KGT_VERSION=/c \
+_KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt
     share_dir_base=$(_k_opt -s 1 0 "$@")
     [ -n "$share_dir_base" ] || share_dir_base=/global
     echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
