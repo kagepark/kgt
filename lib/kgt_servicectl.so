@@ -59,9 +59,9 @@ _k_servicectl() {
          fi
          systemctl set-default $level
          if [ "$level" == "multi-user.target" ]; then
-            systemctl isolate runlevel3.target multi-user.target
+            systemctl isolate runlevel3.target
          else
-            systemctl isolate runlevel5.target graphical.target
+            systemctl isolate runlevel5.target
          fi
          exit
       elif [ "$mode" == "list" ]; then
