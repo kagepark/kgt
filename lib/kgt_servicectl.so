@@ -16,6 +16,7 @@ stop   : stop service
 restart: restart service
 status : status service
 list   : list of service
+set    : set default runlevel (runlevel => 3:multi-user, 5:graphical)
 
 RHEL6.x need <run level>
   "
@@ -28,6 +29,9 @@ _k_servicectl() {
   if [ "$name" == "list" ]; then
       mode=list
       name=""
+  elif [ "$name" == "set" ]; then
+      mode=set
+      name=""
   else
      if [ ! -n "$name" -o ! -n "$mode" ]; then
         _k_servicectl_help
@@ -38,6 +42,21 @@ _k_servicectl() {
          mode=disable
       elif [ "$mode" == "on" ]; then
          mode=enable
+      elif [ "$mode" == "set" ]; then
+         if [ "$level" == "3" ]; then
+            level=multi-user.target
+         elif [ "$level" == "5" ]; then
+            level=graphical.target
+         elif [ "$level" == "multi-user" ]; then
+            level=multi-user.target
+         elif [ "$level" == "graphical" ]; then
+            level=graphical.target
+         else
+            echo "Unknown level($level)"
+            exit
+         fi
+         systemctl set-default $level
+         exit
       elif [ "$mode" == "list" ]; then
          if [ -n "$name" ]; then
             [ -f /usr/lib/systemd/system/${name}.service ] && systemctl list-dependencies ${name} || echo "${name} service not found"
@@ -55,6 +74,23 @@ _k_servicectl() {
       elif [ "$mode" == "list" ]; then
           chkconfig --list ${name}
           exit
+      elif [ "$mode" == "set" ]; then
+         if [ "$level" == "3" ]; then
+            level=3
+         elif [ "$level" == "5" ]; then
+            level=5
+         elif [ "$level" == "multi-user" ]; then
+            level=3
+         elif [ "$level" == "graphical" ]; then
+            level=5
+         else
+            echo "Unknown level($level)"
+            exit
+         fi
+         init $level
+         cp -a /etc/inittab /etc/inittab.orig
+         sed -i "s/^id:[0-9]:initdefault:$/id:${level}:initdefault:/g" /etc/inittab
+         exit
       fi
       if [ -n "$level" -a -n "$mode" ]; then
          [ -f /etc/init.d/${name} ] && chkconfig --level ${level} ${name} ${mode} || echo "${name} service not found"
