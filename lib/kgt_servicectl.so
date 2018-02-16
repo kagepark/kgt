@@ -58,6 +58,11 @@ _k_servicectl() {
             exit
          fi
          systemctl set-default $level
+         if [ "$level" == "multi-user.target" ]; then
+            systemctl isolate runlevel3.target multi-user.target
+         else
+            systemctl isolate runlevel5.target graphical.target
+         fi
          exit
       elif [ "$mode" == "list" ]; then
          if [ -n "$name" ]; then
@@ -89,9 +94,9 @@ _k_servicectl() {
             echo "Unknown level($level)"
             exit
          fi
-         init $level
          cp -a /etc/inittab /etc/inittab.orig
          sed -i "s/^id:[0-9]:initdefault:$/id:${level}:initdefault:/g" /etc/inittab
+         init $level
          exit
       fi
       if [ -n "$level" -a -n "$mode" ]; then
