@@ -1,0 +1,72 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+
+_k_servicectl_help() {
+  echo "
+servicectl [<service name>] <mode> [<run level>]
+
+<mode>
+on     : RHEL7.x(enable) or RHEL6.x(add or on, require <run level>)
+off    : RHEL7.x(disable) or RHEL6.x(del or off, require <run level>)
+start  : start service
+stop   : stop service
+restart: restart service
+status : status service
+list   : list of service
+
+RHEL6.x need <run level>
+  "
+  exit
+}
+_k_servicectl() {
+  name=$1
+  mode=$2
+  level=$3
+  if [ "$name" == "list" ]; then
+      mode=list
+      name=""
+  else
+     if [ ! -n "$name" -o ! -n "$mode" ]; then
+        _k_servicectl_help
+     fi
+  fi
+  if [ -d /usr/lib/systemd/system ]; then
+      if [ "$mode" == "off" ]; then
+         mode=disable
+      elif [ "$mode" == "on" ]; then
+         mode=enable
+      elif [ "$mode" == "list" ]; then
+         if [ -n "$name" ]; then
+            [ -f /usr/lib/systemd/system/${name}.service ] && systemctl list-dependencies ${name} || echo "${name} service not found"
+         else
+            systemctl list-unit-files
+         fi
+         exit
+      fi
+      [ -f /usr/lib/systemd/system/${name}.service ] && systemctl ${mode} ${name} || echo "${name} service not found"
+  else
+      if [ "$mode" == "disable" ]; then
+          mode=off
+      elif [ "$mode" == "enable" ]; then
+          mode=on
+      elif [ "$mode" == "list" ]; then
+          chkconfig --list ${name}
+          exit
+      fi
+      if [ -n "$level" -a -n "$mode" ]; then
+         [ -f /etc/init.d/${name} ] && chkconfig --level ${level} ${name} ${mode} || echo "${name} service not found"
+      else
+         if [ "$mode" == "on" ]; then
+             [ -f /etc/init.d/${name} ] && chkconfig --add ${name} || echo "${name} service not found"
+         elif [ "$mode" == "off" ]; then
+             [ -f /etc/init.d/${name} ] && chkconfig --del ${name}
+         else
+             [ -f /etc/init.d/${name} ] && service ${name} ${mode} || echo "${name} service not found"
+         fi
+      fi
+  fi
+}
+

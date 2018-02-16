@@ -19,3 +19,4 @@ history    # Display history with running time
 diff       # diff file
 screen     # screen command
 git        # git command
+servicectl # Service(daemon) handle
