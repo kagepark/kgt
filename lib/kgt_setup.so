@@ -390,8 +390,10 @@ setup() {
 _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt
     share_dir_base=$(_k_opt -s 1 0 "$@")
     [ -n "$share_dir_base" ] || share_dir_base=/global
-    echo "export PATH=\${PATH}:$_KGT_HOME/bin" > /etc/profile.d/kgt.sh
-    echo "Please run \"source /etc/profile.d/kgt.sh\""
+    echo "_KGT_HOME=$_KGT_HOME
+PATH=\${PATH}:\$_KGT_HOME/bin
+export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
+    source /etc/profile.d/kgt.sh
     share_dir=$share_dir_base/kgt
     [ -d $share_dir ] || mkdir -p $share_dir
     pre_req 
@@ -410,5 +412,6 @@ _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt
     [ -d $share_dir/ctcs ] || build_ctcs $share_dir
     [ -d $share_dir/memtest ] || build_memtest $share_dir
     # build_ansible 
+    echo "Please run \"source /etc/profile.d/kgt.sh\""
     echo "Build and setup done"
 }
