@@ -27,9 +27,11 @@ _k_servicectl() {
   mode=$2
   level=$3
   if [ "$name" == "list" ]; then
+      level=$2
       mode=list
       name=""
   elif [ "$name" == "set" ]; then
+      level=$2
       mode=set
       name=""
   else
