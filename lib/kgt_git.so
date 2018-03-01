@@ -211,7 +211,7 @@ _k_git_commit() {
         git pull $dry_run
         if [ "$init_ver" == "1" ]; then
            if ! git describe --tags --long >& /dev/null; then
-             _k_git_set_version "$dry_run" "0.1" "Initial version"
+             _k_git_set_version "0.1" "Initial version" "$dry_run"
              init=1
            fi
         fi
@@ -229,7 +229,7 @@ _k_git_commit() {
         git pull $dry_run
         if [ "$init_ver" == "1" ]; then
            if ! git describe --tags --long >& /dev/null; then
-             _k_git_set_version "$dry_run" "0.1" "Initial version"
+             _k_git_set_version "0.1" "Initial version" "$dry_run"
              init=1
            fi
         fi
@@ -291,11 +291,12 @@ _k_git_version_files() {
 
 _k_git_set_version() {
     local ver msg dry_run
-    dry_run=$1
-    shift 1
     ver=$1
     shift 1
-    msg=$*
+    msg=$1
+    shift 1
+    dry_run=$1
+
     [ -n "$ver" ] || return 1
     echo $ver | grep "^v" >& /dev/null && ver=$(echo $ver | sed "s/^v//g")
     if [ -n "$msg" ]; then
