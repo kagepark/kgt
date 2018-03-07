@@ -1,11 +1,4 @@
 #!/bin/bash
-#########################################################
-# Install Example 
-# bash munge_install_uninstall.sh install https://github.com/dun/munge/archive/munge-0.5.13.tar.gz /global/opt/munge
-#########################################################
-# Uninstall Example 
-# bash munge_install_uninstall.sh uninstall
-#########################################################
 
 error_exit() {
     echo "$*"
@@ -66,6 +59,7 @@ GROUP="munge"
 VARRUNDIR="\$localstatedir/run/munge"
 
 . /etc/rc.d/init.d/functions
+export _use_systemctl=0
 
 service_start () {
   printf "Starting \$SERVICE_NAME" "\$DAEMON_NAME"
@@ -168,7 +162,7 @@ install() {
 
   [ ! -n "$munge_file" -o ! -n "$munge_install_dir" ] && error_exit "$(basename $0) install <munge file> <munge install dir>
 
-<munge file> : <path>/munge-xxxx.tar.gz  or https://github.com/xxx/munge-xxx.tar.gz"
+<munge file> : <path>/munge-xxxx.tar.gz  or https://github.com/dun/munge/archive/munge-0.5.13.tar.gz"
 #https://github.com/dun/munge/archive/munge-0.5.13.tar.gz
 
   [ -d /tmp/munge ] && rm -fr /tmp/munge
@@ -225,6 +219,11 @@ export PATH=\${PATH}:$munge_install_dir/bin" > /etc/profile.d/munge.sh
 }
 
 uninstall() {
+  echo "Plase backup your important file first"
+  echo -n "Are you sure uninstall MUNGE (y/[n]) ? "
+  read xy
+  if [ "$xy" == "y" -o "$xy" == "Y" ]; then
+
   [ -f /etc/profile.d/munge.sh ] && source /etc/profile.d/munge.sh
   if [ -f /lib/systemd/system/munge.service ]; then
      systemctl stop munge
@@ -244,6 +243,8 @@ uninstall() {
   [ -f /etc/profile.d/munge.sh ] && rm -f /etc/profile.d/munge.sh
   [ -f /lib/systemd/system/munge.service ] && rm -f /lib/systemd/system/munge.service
   [ -n "$prefix" -a -d "$prefix" ] && rm -fr $prefix
+  echo "Uninstall done"
+  fi
 }
 
 if [ "$1" == "install" ]; then
@@ -252,7 +253,7 @@ if [ "$1" == "install" ]; then
 elif [ "$1" == "uninstall" ]; then
    uninstall
 else
-   echo "$(basename $0) install <munge file> <install path>
+   echo "$(basename $0) install
 or
 $(basename $0) uninstall"
 fi
