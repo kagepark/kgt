@@ -142,7 +142,7 @@ install() {
 "
   grep " $(hostname) " /etc/hosts >& /dev/null || error_exit "$(hostname) not found in /etc/hosts file"
   if [ -n "$device" ]; then
-     [ -d /proc/sys/net/$device ] || error_exit "$device not found"
+     [ -d /sys/class/net/$device ] || error_exit "$device not found"
   fi
   if [ -n "$epilog" ]; then
      [ -f $epilog ] || error_exit "$epilog file not found"
