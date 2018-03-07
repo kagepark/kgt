@@ -177,13 +177,15 @@ install() {
   tar jxvf $slurm_file -C /tmp/slurm/1
   cd /tmp/slurm/1/*
   [ -d "$slurm_install_dir" ] || mkdir -p ${slurm_install_dir}
-  ./configure --prefix=$slurm_install_dir --enable-static --enable-shared --sysconfdir=$sysconfdir --localstatedir=$localstatedir --runstatedir=$localstatedir/run --with-munge=$munge_dir $([ "$pam" == "pam" ] && echo "--enable-pam")
-  make -j 6
-  make install
+  ./configure --prefix=$slurm_install_dir --enable-static --enable-shared --sysconfdir=$sysconfdir --localstatedir=$localstatedir --runstatedir=$localstatedir/run --with-munge=$munge_dir $([ "$pam" == "pam" ] && echo "--enable-pam") || error_exit "configure error"
+  make -j 6 || error_exit "compile error"
+  make install || error_exit "Install error"
+  wait
+  [ -d $slurm_install_dir/bin ] || mkdir -p $slurm_install_dir/bin
   cp -a contribs/sjstat $slurm_install_dir/bin
-  if [ ! -d $slurm_dir/accounting ]; then
-     mkdir -p $slurm_dir/accounting
-     chown slurm:slurm $slurm_dir/accounting
+  if [ ! -d $slurm_install_dir/accounting ]; then
+     mkdir -p $slurm_install_dir/accounting
+     chown slurm:slurm $slurm_install_dir/accounting
   fi
   if [ -d /lib/systemd/system ]; then
      cp -a etc/slurmctld.service /lib/systemd/system/slurmctld.service
