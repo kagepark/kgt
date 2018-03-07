@@ -109,9 +109,9 @@ AccountingStorageLoc=$slurm_dir/accounting/slurm_job_accounting.txt
 # COMPUTE NODES
 #PropagateResourceLimitsExcept=MEMLOCK
 $([ -n "$epilog" ] && echo "Epilog=$epilog")
-#NodeName=$node_name Sockets=1 CoresPerSocket=1 ThreadsPerCore=1 State=UNKNOWN
-NodeName=$node_name Procs=1 State=UNKNOWN
-PartitionName=test.q Nodes=$node_name Default=YES MaxTime=INFINITE State=UP
+#NodeName=$(hostname)$([ -n "$node_name" ] && echo ",$node_name") Sockets=1 CoresPerSocket=1 ThreadsPerCore=1 State=UNKNOWN
+NodeName=$(hostname)$([ -n "$node_name" ] && echo ",$node_name") Procs=1 State=UNKNOWN
+PartitionName=test.q Nodes=$(hostname)$([ -n "$node_name" ] && echo ",$node_name") Default=YES MaxTime=INFINITE State=UP
 ReturnToService=1
 
 EOF
@@ -135,7 +135,7 @@ install() {
 
 <slurm file>              : <path>/slurm-xxxx.tar.bz2  or https://download.schedmd.com/slurm/slurm-17.11.4.tar.bz2
 <cluster name>            : SLURM cluster name
-<node name>               : SLURM nodes (ex: test[1-3])
+[<node name>]             : SLURM nodes (ex: test[1-3])
 [<slurm net device name>] : SLURM communication network device name
 [pam]                     : use pam then type pam
 [<epilog file>]           : cleanup epilog file
