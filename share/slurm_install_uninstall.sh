@@ -288,12 +288,12 @@ uninstall() {
   read xy
   if [ "$xy" == "y" -o "$xy" == "Y" ]; then
   [ -f /etc/profile.d/slurm.sh ] && source /etc/profile.d/slurm.sh
-  if [ -f /lib/systemd/system/slurmctld.service ]; then
-     systemctl stop slurmctld
-  fi
   if [ -f /lib/systemd/system/slurmd.service ]; then
      systemctl stop slurmd
   fi 
+  if [ -f /lib/systemd/system/slurmctld.service ]; then
+     systemctl stop slurmctld
+  fi
   
   sleep 5
   id slurm >& /dev/null && userdel slurm
