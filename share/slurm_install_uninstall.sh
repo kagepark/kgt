@@ -6,15 +6,16 @@ error_exit() {
 }
 
 slurm_conf() {
-   sysconfdir=$1
-   localstatedir=$2
-   cluster_name=$3
-   controlmachine=$4
-   device=$5
-   user=$6
-   epilog=$7
-   node_name=$8
-   pam=$9
+   slurm_dir=$1
+   sysconfdir=$2
+   localstatedir=$3
+   cluster_name=$4
+   controlmachine=$5
+   device=$6
+   user=$7
+   epilog=$8
+   node_name=$9
+   pam=$10
    [ -n "$controlmachine" ] || controlmachine=$(hostname)
    [ -n "$user" ] || user=root
    [ -d $sysconfdir ] || mkdir -p $sysconfdir
@@ -43,6 +44,8 @@ SlurmctldPidFile=$localstatedir/run/slurmctld.pid
 SlurmdPidFile=$localstatedir/run/slurmd.pid
 ProctrackType=proctrack/pgid
 #PluginDir=
+CacheGroups=0
+ReturnToService=0
 #FirstJobId=
 #MaxJobCount=
 #PlugStackConfig=
@@ -59,7 +62,7 @@ ProctrackType=proctrack/pgid
 #TrackWCKey=no
 #TreeWidth=50
 #TmpFS=
-#UsePAM=
+UsePAM=$([ "$pam" == "pam" ] && echo 1 || echo 0)
 #
 # TIMERS
 SlurmctldTimeout=300
@@ -68,12 +71,11 @@ InactiveLimit=0
 MinJobAge=300
 KillWait=30
 Waittime=0
-UsePAM=$([ "$pam" == "pam" ] && echo 1 || echo 0)
 #
 # SCHEDULING
 SchedulerType=sched/backfill
 #SchedulerAuth=
-#SelectType=select/linear
+SelectType=select/linear
 FastSchedule=1
 #PriorityType=priority/multifactor
 #PriorityDecayHalfLife=14-0
@@ -97,18 +99,19 @@ JobCompType=jobcomp/none
 #JobAcctGatherFrequency=30
 #
 #AccountingStorageType=accounting_storage/slurmdbd
+AccountingStorageType=accounting_storage/filetxt
+AccountingStorageLoc=$slurm_dir/accounting/slurm_job_accounting.txt
 #AccountingStorageHost=
 #AccountingStorageLoc=
 #AccountingStoragePass=
 #AccountingStorageUser=
 #
 # COMPUTE NODES
-# OpenHPC default configuration
-PropagateResourceLimitsExcept=MEMLOCK
-AccountingStorageType=accounting_storage/filetxt
+#PropagateResourceLimitsExcept=MEMLOCK
 $([ -n "$epilog" ] && echo "Epilog=$epilog")
-NodeName=$node_name Sockets=1 CoresPerSocket=1 ThreadsPerCore=1 State=UNKNOWN
-PartitionName=test.q Nodes=$node_name Default=YES MaxTime=24:00:00 State=UP
+#NodeName=$node_name Sockets=1 CoresPerSocket=1 ThreadsPerCore=1 State=UNKNOWN
+NodeName=$node_name Procs=1 State=UNKNOWN
+PartitionName=test.q Nodes=$node_name Default=YES MaxTime=INFINITE State=UP
 ReturnToService=1
 
 EOF
@@ -177,6 +180,10 @@ install() {
   make -j 6
   make install
   cp -a contribs/sjstat $slurm_install_dir/bin
+  if [ ! -d $slurm_dir/accounting ]; then
+     mkdir -p $slurm_dir/accounting
+     chown slurm:slurm $slurm_dir/accounting
+  fi
   if [ -d /lib/systemd/system ]; then
      cp -a etc/slurmctld.service /lib/systemd/system/slurmctld.service
      cp -a etc/slurmd.service /lib/systemd/system/slurmd.service
@@ -232,7 +239,7 @@ export PATH LD_LIBRARY_PATH LD_RUN_PATH" > /etc/profile.d/slurm.sh
   cd ${opwd}
   rm -fr /tmp/slurm
 
-  slurm_conf "$sysconfdir" "$localstatedir" "$cluster_name" "" "$device" "slurm" "$cfg_epilog_file" "$node_name" "$pam"
+  slurm_conf "$slurm_install_dir" "$sysconfdir" "$localstatedir" "$cluster_name" "" "$device" "slurm" "$cfg_epilog_file" "$node_name" "$pam"
 
   systemctl start slurmctld
   sleep 5
