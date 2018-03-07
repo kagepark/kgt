@@ -161,6 +161,7 @@ install() {
   fi
   [ -d $sysconfdir ] || mkdir -p $sysconfdir
 
+  id slurm >& /dev/null || useradd --system slurm
   [ -d /tmp/slurm ] && rm -fr /tmp/slurm
   mkdir -p /tmp/slurm
   if echo $slurm_file  | grep "^http" >& /dev/null; then
@@ -202,7 +203,6 @@ install() {
      chmod +x $slurm_install_dir/epilog/slurm.epilog.clean
      cfg_epilog_file=$slurm_install_dir/epilog/slurm.epilog.clean
   fi
-  id slurm >& /dev/null || useradd --system slurm
   openssl genrsa -out $sysconfdir/slurm.key 1024
   openssl rsa -in $sysconfdir/slurm.key -pubout -out $sysconfdir/slurm.cert
   echo "#
