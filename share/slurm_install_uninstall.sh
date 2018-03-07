@@ -267,7 +267,7 @@ EOF
   sjstat
   sleep 2
   for (( ii=0; ii<100; ii++)); do
-     [ "$(sjstat  | awk '{if($4=="test" && $5=="R") printf "Run"}')" == "Run" ] || break
+     [ "$(sjstat  | awk '{if($4=="test.q" && $5=="R") printf "Run"}')" == "Run" ] || break
      echo "Wait running job..."
      sleep 5
   done
