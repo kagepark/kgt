@@ -9,7 +9,7 @@ Install:
 # ./bin/kgt setup
 # . /etc/profile.d/kgt.sh
 
-Installed binary test file will be in /global/kgt/<pkg name>/....
+Installed-binary-packages are in /global/kgt/<pkg name>/....
 when you want directly handle the binary file then you can use above directory
 
 ##### Command #####
@@ -32,3 +32,23 @@ or
 -g test -dash   => it will find hostname (included dash)
 ##### Hostname rule end #####
 
+
+###############################
+##### MUNGE/SLURM Install #####
+## Initial simple install script after automatically download file
+
+## MUNGE Install
+# cd <kgt home>/share
+# bash munge_install_uninstall.sh install https://github.com/dun/munge/archive/munge-0.5.13.tar.gz /global/opt/munge
+
+## MUNGE Uninstall
+# cd <kgt home>/share
+# bash munge_install_uninstall.sh uninstall
+
+## SLURM Install
+# cd <kgt home>/share
+# bash slurm_install_uninstall.sh install https://download.schedmd.com/slurm/slurm-17.11.4.tar.bz2 /global/opt/slurm /global/opt/munge TEST mgt enp0s3
+
+## SLURM uninstall
+# cd <kgt home>/share
+# bash slurm_install_uninstall.sh uninstall
