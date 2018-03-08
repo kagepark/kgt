@@ -403,6 +403,133 @@ build_ansible() {
    ansible all -m ping -u root
 }
 
+build_pingpong() {
+   local share_dir
+   share_dir=$1
+   mkdir -p $share_dir/pingpong
+   cd $share_dir/pingpong
+   cat << EOF > $share_dir/pingpong/pingpong.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include <mpi.h>
+
+#define MAX_SIZE   262144
+#define NUM_ROUNDS 1000
+
+int main(int argc, char **argv) {
+  int        me, nproc;
+  int        msg_length, round, i;
+  double     t_start, t_stop;
+  u_int8_t  *snd_buf;  // Send buffer (byte array)
+  u_int8_t  *rcv_buf;  // Receive buffer (byte array)
+  MPI_Win    window;
+
+  MPI_Init(&argc, &argv);
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &me);
+  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+
+  if (nproc != 2) {
+    if (me == 0) printf("This benchmark should be run on exactly two processes");
+    MPI_Abort(MPI_COMM_WORLD, 1);
+  }
+
+  if (me == 0)
+    printf("MPI-2 passive ping-pong latency test, performing %d rounds at each xfer size.\n\n", NUM_ROUNDS);
+
+  MPI_Alloc_mem(MAX_SIZE, MPI_INFO_NULL, &rcv_buf);
+  MPI_Alloc_mem(MAX_SIZE, MPI_INFO_NULL, &snd_buf);
+
+  MPI_Win_create(rcv_buf, MAX_SIZE, 1, MPI_INFO_NULL, MPI_COMM_WORLD, &window);
+
+  for (i = 0; i < MAX_SIZE; i++) {
+    snd_buf[i] = 1;
+  }
+
+  for (msg_length = 1; msg_length <= MAX_SIZE; msg_length *= 2) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    t_start = MPI_Wtime();
+
+    // Perform NUM_ROUNDS ping-pongs
+    for (round = 0; round < NUM_ROUNDS*2; round++) {
+
+      // I am the sender
+      if (round % 2 == me) {
+        // Clear start and end markers for next round
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, me, 0, window);
+        rcv_buf[0] = 0;
+        rcv_buf[msg_length-1] = 0;
+        MPI_Win_unlock(me, window);
+
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, (me+1)%2, 0, window);
+        MPI_Put(snd_buf, msg_length, MPI_BYTE, (me+1)%2, 0, msg_length, MPI_BYTE, window);
+        MPI_Win_unlock((me+1)%2, window);
+      }
+
+      // I am the receiver: Poll start and end markers
+      else {
+        u_int8_t val;
+
+        do {
+          //MPI_Iprobe(0, 0, MPI_COMM_WORLD, &val, MPI_STATUS_IGNORE);
+          MPI_Win_lock(MPI_LOCK_EXCLUSIVE, me, 0, window);
+          val = ((volatile u_int8_t*)rcv_buf)[0];
+          MPI_Win_unlock(me, window);
+        } while (val == 0);
+
+        do {
+          //MPI_Iprobe(0, 0, MPI_COMM_WORLD, &val, MPI_STATUS_IGNORE);
+          MPI_Win_lock(MPI_LOCK_EXCLUSIVE, me, 0, window);
+          val = ((volatile u_int8_t*)rcv_buf)[msg_length-1];
+          MPI_Win_unlock(me, window);
+        } while (val == 0);
+      }
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    t_stop = MPI_Wtime();
+
+    if (me == 0)
+      printf("%8d bytes \t %12.8f us\n", msg_length, (t_stop-t_start)/NUM_ROUNDS*1.0e6);
+  }
+
+  MPI_Win_free(&window);
+  MPI_Free_mem(snd_buf);
+  MPI_Free_mem(rcv_buf);
+
+  MPI_Finalize();
+
+  return 0;
+}
+EOF
+   cat << EOF > $share_dir/pingpong/pingpong.q
+#!/bin/bash 
+#SBATCH --partition=test.q             # define running queue name
+#SBATCH --job-name=pingpong                # Job name
+# #SBATCH -t <time>                            # Define running time 
+#SBATCH -N 5                                 # Find available host number per node
+# #SBATCH -n #                                 # Find available host number per core
+# #SBATCH --ntasks-per-node=8                  # take per node
+# #SBATCH --mem=20GB                           # Memory define
+# #SBATCH --constraint=IB                      # MPI jobs should request nodes that have InfiniBand
+# #SBATCH -w, --nodelist=cpn-f16-35,cpn-f16-37 # Requesting Specific Nodes
+# #SBATCH --exclude=cpn-f16-35,cpn-f16-37      # Excluding Specific Nodes
+#SBATCH --output=pingpong.%j.out            # Output file
+#SBATCH --error=pingpong.%j.err             # Error output file
+#
+#
+module load mpich
+srun --nodes=${SLURM_NNODES} bash -c 'hostname -s ' | sort -u> /tmp/slurm.node # get uniq hostnames
+mpirun -np $(cat /tmp/slurm.node | wc -l) -machinefile=/tmp/slurm.node ./pingpong
+EOF
+
+   _k_env load mpich
+   mpicc pingpong.c -o pingpong
+   cd $org_path
+}
+
 setup() {
     _k_root
     sed -i "/^_KGT_VERSION=/c \
@@ -430,6 +557,7 @@ export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
     [ -d $share_dir/iozone ] || build_iozone $share_dir
     [ -d $share_dir/ctcs ] || build_ctcs $share_dir
     [ -d $share_dir/memtest ] || build_memtest $share_dir
+    [ -d $share_dir/pingpong ] || build_pingpong $share_dir
     # build_ansible 
     echo "Please run \"source /etc/profile.d/kgt.sh\""
     echo "Build and setup done"
