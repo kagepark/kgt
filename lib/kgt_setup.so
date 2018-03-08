@@ -505,24 +505,24 @@ int main(int argc, char **argv) {
 }
 EOF
    cat << EOF > $share_dir/pingpong/pingpong.q
-#!/bin/bash 
-#SBATCH --partition=test.q             # define running queue name
-#SBATCH --job-name=pingpong                # Job name
-# #SBATCH -t <time>                            # Define running time 
-#SBATCH -N 5                                 # Find available host number per node
-# #SBATCH -n #                                 # Find available host number per core
-# #SBATCH --ntasks-per-node=8                  # take per node
-# #SBATCH --mem=20GB                           # Memory define
-# #SBATCH --constraint=IB                      # MPI jobs should request nodes that have InfiniBand
-# #SBATCH -w, --nodelist=cpn-f16-35,cpn-f16-37 # Requesting Specific Nodes
-# #SBATCH --exclude=cpn-f16-35,cpn-f16-37      # Excluding Specific Nodes
+#!/bin/bash -l
+#SBATCH --partition=test.q                  # define running queue name
+#SBATCH --job-name=pingpong                 # Job name
+# #SBATCH -t <time>                         # Define running time 
+#SBATCH -N 5                                # Find available host number per node
+# #SBATCH -n #                              # Find available host number per core
+# #SBATCH --ntasks-per-node=8               # take per node
+# #SBATCH --mem=20GB                        # Memory define
+# #SBATCH --constraint=IB                   # MPI jobs should request nodes that have InfiniBand
+# #SBATCH --exclude=cpn-f16-35,cpn-f16-37   # Excluding Specific Nodes
 #SBATCH --output=pingpong.%j.out            # Output file
 #SBATCH --error=pingpong.%j.err             # Error output file
 #
 #
+. /etc/profile.d/module.sh
 module load mpich
-srun --nodes=${SLURM_NNODES} bash -c 'hostname -s ' | sort -u> /tmp/slurm.node # get uniq hostnames
-mpirun -np $(cat /tmp/slurm.node | wc -l) -machinefile=/tmp/slurm.node ./pingpong
+srun --nodes=\${SLURM_NNODES} bash -c 'hostname -s ' | sort -u > /tmp/slurm.node
+mpirun -np \$(cat /tmp/slurm.node | wc -l) -machinefile=/tmp/slurm.node ./pingpong
 EOF
 
    _k_env load mpich
