@@ -191,15 +191,26 @@ hpl() {
     nodes=$(_k_opt -nn 1 0 "$@")
     memory=$(_k_opt -ms 1 0 "$@")
     percent=$(_k_opt -pc 1 0 "$@")
-    hpl_path=$(_k_opt -hp 1 0 "$@")
     mpi_type=$(_k_opt -mt 1 0 "$@")
+    hpl_path=$(_k_opt -hp 1 0 "$@")
     precision=$(_k_opt -pr 1 0 "$@")
     ib=$(_k_opt -ib 1 0 "$@")
     hosts=$(_k_make_hostname "$@")
     hosts_arr=($hosts)
 
     [ -n "$precision" ] || precision=8
-    [ -n "$mpi_type" ] || mpi_type=mpich
+    if [ -n "$mpi_type" ]; then
+       if ! _k_env display $mpi_type >& /dev/null; then
+           module load $mpi_type >& /dev/null || error_exit "MPI Module($mpi_type) not found"
+       fi
+    else
+       mpi_type=mpich
+       _k_env display $mpi_type >& /dev/null || error_exit "MPI Module not found"
+    fi
+    if [ ! -n "$hpl_path" ]; then
+       hpl_path=/global/kgt/hpl/${mpi_type}_gcc
+       [ -d $hpl_path ] || error_exit "hpl path not found (use '-hp' option)"
+    fi
     [ -n "$nodes" ] || nodes=${#hosts_arr[*]}
 
     [ -d "$hpl_path" ] || hpl_help
