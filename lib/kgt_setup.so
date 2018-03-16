@@ -75,7 +75,16 @@ build_module() {
        make install
        cd $org_path
        rm -fr /tmp/kgt
-       mkdir -p $_KGT_HOME/modules
+       if [ ! -L /global/opt/modules -a ! -d /global/opt/modules ]; then
+           [ -d /global/opt ] || mkdir -p /global/opt
+           ln -s $share_dir/modules /global/opt/modules
+       fi
+       if [ ! -d /global/modulefiles ]; then
+          mkdir -p /global/modulefiles
+          ln -s /global/modulefiles $_KGT_HOME/modules
+       else
+          mkdir -p $_KGT_HOME/modules
+       fi
    else
        echo "module file not found"
    fi
