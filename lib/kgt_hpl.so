@@ -128,8 +128,8 @@ run_hpl() {
     if [ -n "$mpi_type" ]; then
         _k_env load ${mpi_type} || error_exit "Load fail for ${mpi_type}. Please check modules"
     fi
-    echo "Work dir : $(pwd)" >> $hpl_path/hpl.run.log
-    echo "Run cmd  : time mpirun -np $max_mpi_run -hosts  $(echo $hosts | sed "s/ /,/g") $ib_str ./xhpl" >> $hpl_path/hpl.run.log
+    echo "Work dir : $(pwd)" >> /tmp/hpl.run.log
+    echo "Run cmd  : time mpirun -np $max_mpi_run -hosts  $(echo $hosts | sed "s/ /,/g") $ib_str ./xhpl" >> /tmp/hpl.run.log
     time mpirun -np $max_mpi_run -hosts  $(echo $hosts | sed "s/ /,/g") $ib_str ./xhpl
     [ -n "$mpi_type" ] && _k_env unload ${mpi_type}
 }
