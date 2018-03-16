@@ -164,6 +164,7 @@ hpl_help() {
 }
 
 hpl() {
+    _k_opt --help 0 0 "$@" >/dev/null && hpl_help
     _k_opt -cf 0 0 "$@" >/dev/null && conf_hpl=1
     _k_opt -m 0 0 "$@" >/dev/null && run_hpl_mpi=1
     _k_opt -nl 0 0 "$@" >/dev/null && new_log=1
@@ -197,6 +198,7 @@ hpl() {
     ib=$(_k_opt -ib 1 0 "$@")
     hosts=$(_k_make_hostname "$@")
     hosts_arr=($hosts)
+    [ "${#hosts_arr[*]}" == "0" ] && hpl_help
 
     [ -n "$precision" ] || precision=8
     if [ -n "$mpi_type" ]; then
@@ -212,8 +214,8 @@ hpl() {
        [ -d $hpl_path ] || error_exit "hpl path not found (use '-hp' option)"
     fi
     [ -n "$nodes" ] || nodes=${#hosts_arr[*]}
-
     [ -d "$hpl_path" ] || hpl_help
+
     if [ "$conf_hpl" == "1" ]; then
        [ -n "$percent" ] || percent=90
        [ ! -n "$cores" -o ! -n "$nodes" -o ! -n "$hpl_path" -o ! -n "$memory"  ] && hpl_help
