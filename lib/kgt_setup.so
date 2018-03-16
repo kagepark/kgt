@@ -178,8 +178,9 @@ build_hpl() {
    if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
        cd $src_dir
        if [ -d $_KGT_HOME/modules ]; then
-       _k_env load ${env_file}
-       _k_env load blas
+          [ ! -f $_KGT_HOME/modules/${env_file} -o ! -d $_KGT_HOME/modules/${env_file} ] && return 1
+          _k_env load ${env_file}
+          _k_env load blas
        fi
 #       export BLAS_HOME=$share_dir/blas
        cp -a $_KGT_HOME/share/Make.${env_file}_gcc.hpl Make.${env_file}_gcc
@@ -294,6 +295,7 @@ EOF
 }
 
 build_mvapich() {
+   [ -d /sys/class/infiniband ] || return 1
    local share_dir
    share_dir=$1
    if src_dir=$(_extract $_KGT_HOME/share/mvapich2-2.2.tar.bz2); then
