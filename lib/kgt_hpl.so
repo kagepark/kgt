@@ -148,7 +148,7 @@ hpl_help() {
     echo " = Run/Config option ="
     echo " -cn <core num>    : <core number> of node"
     echo " -nn <node num>    : Running host number, default get from hostname"
-    echo " -ms <memory size> : Free <memory size> of node"
+    echo " -ms <memory size> : Free <memory size> GB of node"
     echo " -pc <percent>     : Memory usage percent, default 90(%)"
     echo " -pr <precision>   : precision(8,16), default 8"
     echo " -hp <xhpl path>   : xhpl path"
