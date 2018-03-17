@@ -3,8 +3,6 @@
 # Kage Park
 # License : GPL
 ####################################
-disk_data() {
-}
 
 run_test() {
   if [ "$1" == "fio" ]; then
