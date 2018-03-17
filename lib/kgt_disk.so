@@ -1,0 +1,50 @@
+###################################
+# Copyright (c) CEP Research Institude, All rights reserved. Since 2008
+# Kage Park
+# License : GPL
+####################################
+disk_data() {
+}
+
+run_test() {
+  if [ "$1" == "fio" ]; then
+     shift 1
+     _k_env load fio
+     [ -n "$filename" ] || filename=/tmp/random_read_write.fio
+     [ -n "$size" ] || size=4G
+     fio --randrepeat=1 --ioengine=libaio --direct=1 --gtod_reduce=1 --name=test --filename=$filename --bs=4k --iodepth=64 --size=$size --readwrite=randrw --rwmixread=75
+  fi
+}
+
+disk_help() {
+    echo "${FUNCNAME} <-h hostname | -g groupname> <opt>"
+    echo " <opt>"
+#    echo "  -c : Check HPL"
+#    echo "  -r : Run HPL Single node"
+    echo "  -m  : Run HPL MPI, minimum req: -h|-g -hp"
+    echo "  -cf : configure HPL.dat, minimum req: -cn -nn|-h|-g -ms -hp"
+#    echo "  -k : Kill HPL"
+#    echo "  -l <num>: Loop <num> with '-r' or '-m' option"
+    echo "  -nl : make a new log file"
+    echo
+    echo " = Run/Config option ="
+    echo " -cn <core num>    : <core number> of node"
+    echo " -nn <node num>    : Running host number, default get from hostname"
+    echo " -ms <memory size> : Free <memory size> GB of node"
+    echo " -pc <percent>     : Memory usage percent, default 90(%)"
+    echo " -pr <precision>   : precision(8,16), default 8"
+    echo " -hp <xhpl path>   : xhpl path"
+    echo " -mt <mpi type>    : intel,mpich,mvapich..., default mpich"
+    echo " -ib <ib name>     : ib0, mlx5_0,... , default Ethernet"
+    echo 
+    echo " = debug option ="
+    echo " -fm <output logfile> : Find max condition from <output logfile>"
+    echo 
+    echo "* Not support intel,openmpi,... yet"
+    echo "* Not support mlx4_0,mlx5_0,HFI yet"
+    exit
+}
+
+disk() {
+    run_test "$1"
+}
