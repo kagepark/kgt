@@ -9,7 +9,7 @@ find_rpm() {
 }
 
 pre_req() {
-   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libquadmath libquadmath-devel libstdc++ libstdc++-devel screen 
+   yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libquadmath libquadmath-devel libstdc++ libstdc++-devel screen mc iptables openssl-devel lz4-devel lzo-devel pam-devel expect minicom
 
 #   for ii in gnuplot liberation-sans-fonts liberation-mono-fonts liberation-fonts-common liberation-serif-fonts; do
 #      if ! find_rpm $ii; then
@@ -414,6 +414,20 @@ build_ansible() {
    ansible all -m ping -u root
 }
 
+install_packages() {
+      [ -d $share_dir/modules ] || build_module $share_dir
+      [ -d $share_dir/fio ] || build_fio $share_dir
+      [ -d $share_dir/mpich ] || build_mpich $share_dir
+      [ -d $share_dir/mvapich ] || build_mvapich $share_dir
+      [ -d $share_dir/blas ] || build_blas $share_dir
+      [ -d $share_dir/hpl/mpich_gcc ] || build_hpl $share_dir mpich
+      [ -d $share_dir/hpl/mvapich_gcc ] || build_hpl $share_dir mvapich
+      [ -d $share_dir/stress ] || build_stress $share_dir
+      [ -d $share_dir/stress_ng ] || build_stress_ng $share_dir
+      [ -d $share_dir/iozone ] || build_iozone $share_dir
+      [ -d $share_dir/ctcs ] || build_ctcs $share_dir
+      [ -d $share_dir/memtest ] || build_memtest $share_dir
+}
 
 setup() {
     _k_root
@@ -427,21 +441,16 @@ export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
     source /etc/profile.d/kgt.sh
     share_dir=$share_dir_base/kgt
     [ -d $share_dir ] || mkdir -p $share_dir
-    pre_req 
-    build_pip
-    build_pip_modules cx_Freeze
-    [ -d $share_dir/modules ] || build_module $share_dir
-    [ -d $share_dir/fio ] || build_fio $share_dir
-    [ -d $share_dir/mpich ] || build_mpich $share_dir
-    [ -d $share_dir/mvapich ] || build_mvapich $share_dir
-    [ -d $share_dir/blas ] || build_blas $share_dir
-    [ -d $share_dir/hpl/mpich_gcc ] || build_hpl $share_dir mpich
-    [ -d $share_dir/hpl/mvapich_gcc ] || build_hpl $share_dir mvapich
-    [ -d $share_dir/stress ] || build_stress $share_dir
-    [ -d $share_dir/stress_ng ] || build_stress_ng $share_dir
-    [ -d $share_dir/iozone ] || build_iozone $share_dir
-    [ -d $share_dir/ctcs ] || build_ctcs $share_dir
-    [ -d $share_dir/memtest ] || build_memtest $share_dir
+    if [ "$1" == "pre_req" ]; then
+      pre_req 
+    elif [ "$1" == "packages" ]; then
+      install_packages
+    else
+      pre_req 
+      build_pip
+      build_pip_modules cx_Freeze
+      install_packages
+    fi
     # build_ansible 
     echo "Please run \"source /etc/profile.d/kgt.sh\""
     echo "Build and setup done"
