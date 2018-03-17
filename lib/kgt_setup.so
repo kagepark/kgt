@@ -93,7 +93,7 @@ build_module() {
 build_fio() {
    local share_dir
    share_dir=$1
-   if src_dir=$(_extract $_KGT_HOME/share/modules-4.1.0.tar.bz2); then
+   if src_dir=$(_extract $_KGT_HOME/share/fio-fio-3.3.tar.bz2); then
        cd $src_dir
        ./configure --prefix=$share_dir/fio
        make
