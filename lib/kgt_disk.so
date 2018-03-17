@@ -9,6 +9,7 @@ disk_data() {
 run_test() {
   if [ "$1" == "fio" ]; then
      shift 1
+     _k_root
      _k_env load fio
      [ -n "$filename" ] || filename=/tmp/random_read_write.fio
      [ -n "$size" ] || size=4G
