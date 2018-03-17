@@ -15,6 +15,7 @@ hpl        # Testing HPL
 huge_pages # Setup huge pages
 flush      # Flush Cache
 memtest    # Memory test
+disk       # Disk test
 history    # Display history with running time
 diff       # diff file
 screen     # screen command
