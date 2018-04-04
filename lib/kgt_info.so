@@ -68,7 +68,12 @@ node_info() {
   done
 
   printf "%17s : %-s\n" "Disks" $(ls /sys/block/ | grep -v -e "dm-" -e "loop"| wc -l)
+
+  hdd_dev_type_arr=($(for ii in $(ls /dev/disk/by-path/); do dev_n=$(readlink -f /dev/disk/by-path/$ii| sed "s#/dev/##g"); dev_type=($(echo $ii | sed "s/-/ /g")); echo "${dev_n}:${dev_type[2]}"; done | sort | uniq))
+
   for hdd in $(ls /sys/block | grep -v -e "^dm" -e "^loop"); do
+      hdd_dev_path=$(readlink -f /sys/block/$hdd)
+      [ "$(cat $hdd_dev_path/removable)" == "1" ] && continue
       printf "%13s + %-13s : %s\n" "" "Disk DEV Name" "$hdd"
       printf "%16s - %-10s : %s\n" "" "Path" "$(readlink -f /sys/block/$hdd | sed -e "s#/sys/devices##g" -e "s/\/block\/${hdd}$//g")"
       printf "%16s - %-10s : %s\n" "" "Dev" "$(cat /sys/block/$hdd/dev)"
@@ -77,7 +82,7 @@ node_info() {
       [ -f /usr/sbin/smartctl ] && printf "%16s - %-10s : %s\n" "" "Temp(*C)" "$(smartctl -A /dev/$hdd | grep Temperature_Celsius | awk '{print $10}')"
       printf "%16s - %-10s : %s\n" "" "S/N" "$([ -f /sys/block/$hdd/device/serial ] && awk '{print $1}' /sys/block/$hdd/device/serial || lsblk -d /dev/$hdd -no serial)"
       printf "%16s - %-10s : %s\n" "" "Firmware" "$(cat /sys/block/$hdd/device/firmware_rev)"
-      printf "%16s - %-10s : %s\n" "" "Type" "$(rota=$(cat /sys/block/$hdd/queue/rotational); if [ "$rota" == "1" ]; then echo HDD; elif [ "$rota" == "0" ]; then echo SSD; else echo Unknown; fi )"
+      printf "%16s - %-10s : %s\n" "" "Type" "$(rota=$(cat /sys/block/$hdd/queue/rotational); if [ "$rota" == "0" ]; then echo SSD; else ftype=$(for hdt in ${hdd_dev_type_arr[*]}; do if echo $hdt | grep "^${hdd}:" >& /dev/null; then echo $hdt |sed "s/^${hdd}://g"; break; fi;done); [ -n "$ftype" ] && echo $ftype || echo unknown ; fi )"
       printf "%16s - %-10s : %s\n" "" "Partition" "$(ls /sys/class/block/${hdd}*/partition|wc -l)"
   done
   printf "%17s : %-s\n" "IPMI" "$([ -c /dev/ipmi0 ] && echo On || echo "-")"
