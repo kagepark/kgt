@@ -135,7 +135,7 @@ _k_git_init() {
 }
 
 _k_git_info() {
-   git config -l | grep "remote.origin.url"
+   git config -l | grep -e "remote.origin.url" -e "user.email" -e "user.name"
    echo "Version: $(git describe --tags --long 2>/dev/null || echo "-")"
    git log master -n 1 --pretty="format:Commited by %cN at %cd" 2>/dev/null
    echo
