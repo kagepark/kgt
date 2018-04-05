@@ -300,8 +300,8 @@ _k_git_set() {
     [ ! -n "$name" -o ! -n "$email" ] && error_exit "<name> or <email> not found"
     git config --unset --global user.name
     git config --unset --global user.email
-    git config user.name="$name"
-    git config user.email="$email"
+    git config user.name "$name"
+    git config user.email "$email"
 }
 
 _k_git_set_version() {
