@@ -23,6 +23,7 @@ git <opt> [<input>]
   add <file>             : add file to git
   info                   : similar as svn info
   find <string>          : find <string> in the git source. same as git's grep command
+  set <name> <email>     : setup <name> and <email> to git local config
   set_version <version>  : make a <version> to git tag (source tree)
   version_files <version>: show file list in the <version>
   recover <file>         : recover deleted <file>
@@ -204,6 +205,9 @@ _k_git_version() {
 
 _k_git_commit() {
     local dry_run aa
+    git_config_str=$(git config --local -l)
+    echo "$git_config_str" | grep "user.email=" >& /dev/null || error_exit "Please set user.email using \"kgt git set <name> <email>\""
+    echo "$git_config_str" | grep "user.name=" >& /dev/null || error_exit "Please set user.name using \"kgt git set <name> <email>\""
     dry_run=$1
     shift 1
     aa=$*
@@ -287,6 +291,17 @@ _k_git_version_files() {
     local aa
     aa=$1
     git ls-tree -l -r $aa
+}
+
+_k_git_set() {
+    local name email
+    name=$1
+    email=$2
+    [ ! -n "$name" -o ! -n "$email" ] && error_exit "<name> or <email> not found"
+    git config --unset --global user.name
+    git config --unset --global user.email
+    git config user.name="$name"
+    git config user.email="$email"
 }
 
 _k_git_set_version() {
