@@ -4,9 +4,7 @@
 # License : GPL
 ####################################
 
-run_test() {
-  if [ "$1" == "fio" ]; then
-     shift 1
+test_fio(){
      _k_root
      _k_env load fio
      filename=$1
@@ -17,20 +15,31 @@ run_test() {
      echo "** Run FIO for Read Write Performance Test**"
      echo
      fio --randrepeat=1 --ioengine=libaio --direct=1 --gtod_reduce=1 --name=test --filename=$filename --bs=4k --iodepth=64 --size=$size --readwrite=randrw --rwmixread=75
-  elif [ "$1" == "iozone" ]; then
-     shift 1
+}
+
+test_iozon(){
      _k_root
      filename=$1
      [ -n "$filename" ] || filename="/tmp/iozone.output.xls"
      _k_env load iozone
      iozone -a -b $filename
      echo "Look output /tmp/iozone.output.xls"
+}
+
+run_test() {
+  if [ "$1" == "fio" ]; then
+     shift 1
+     test_fio $*
+  elif [ "$1" == "iozone" ]; then
+     shift 1
+     test_iozon $*
   fi
 }
 
 disk_help() {
     echo "$(echo ${FUNCNAME} | sed "s/_help//g") <test name> [<option>]"
     echo
+    echo "It will test on local host"
     echo " fio <test filename> <test file size(ex:4G)>"
     echo " iozone [<output filename>]"
     exit
