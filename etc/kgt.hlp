@@ -1,23 +1,27 @@
 help or --help    # Help
 version           # display version
-setup      # Setup profile to /etc/profile.d/kgt.sh and install tools source
-check      # Check base items on the system
-top        # display CPU utilization 
-temp       # display Physical CPU temperature
-sh         # Run a shell on the system
-info       # display physical information
-ipmi       # power handle with IPMI (It need <hostname>-ipmi hostname for IPMI IP)
+setup             # Setup profile to /etc/profile.d/kgt.sh and install tools source
+
+# Local host
 dhcp_ip    # Find DHCP IP from mac
 sm         # Find OpenSM 
 ofed       # Handle OFED
-pingpong   # Testing Pingpong
-hpl        # Testing HPL
-huge_pages # Setup huge pages
-flush      # Flush Cache
-memtest    # Memory test
 disk       # Disk test
 history    # Display history with running time
 diff       # diff file
 screen     # screen command
 git        # git command
 servicectl # Service(daemon) handle
+
+# Remote host
+check      # Display base items on the system
+info       # Display physical information
+top        # Display CPU utilization 
+temp       # Display Physical CPU temperature
+pingpong   # Testing Pingpong
+hpl        # Testing HPL
+memtest    # Testing Memory
+ipmi       # Power handle with IPMI (It need <hostname>-ipmi hostname for IPMI IP)
+huge_pages # Setup huge pages
+flush      # Flush Cache
+sh         # Run a shell on the system
