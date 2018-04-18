@@ -178,7 +178,7 @@ build_hpl() {
    if src_dir=$(_extract $_KGT_HOME/share/hpl-2.2.tar.bz2); then
        cd $src_dir
        if [ -d $_KGT_HOME/modules ]; then
-          [ ! -f $_KGT_HOME/modules/${env_file} -o ! -d $_KGT_HOME/modules/${env_file} ] && return 1
+          [ ! -f $_KGT_HOME/modules/${env_file} -a ! -d $_KGT_HOME/modules/${env_file} ] && return 1
           _k_env load ${env_file}
           _k_env load blas
        fi
