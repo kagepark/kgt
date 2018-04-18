@@ -28,7 +28,7 @@ tag=k
 
 _help() {
     no_cmd=$1
-    echo "Usage: $(basename $0) <command> <hostname rule> [<arg1> ....]"
+    echo "Usage: $(basename $0) <command> [ <hostname rule> [<arg1> ....] ]"
     echo 
     echo " <hostname rule>"
     echo "  <find hostname from /etc/hosts>"
