@@ -3,6 +3,13 @@
 # Kage Park
 # License : GPL
 ####################################
+percent() {
+    local val per
+    val=$1
+    per=$2
+    echo $(printf "%.0f" $(echo "$val * ($per/100)" | bc -l))
+}
+
 hpl_data() {
    local mem cpu precision hpl_path percent_mem
    cpu=$1
@@ -12,23 +19,23 @@ hpl_data() {
    hpl_path=$5
    precision=$6
    swap_th=64 #128 or 64
+
+   #CPU
    total_cores=$(($cpu * $nodes))
+
+   #Memory
    total_mem_b=$(($gmem * 1024 * 1024 * 1024 * $nodes))
-   avail_mem=$(( $(( $(($total_mem_b / $precision)) * $percent_mem )) / 100))
-   #avail_mem=$(( $(( $total_mem_b * $percent_mem )) / 100))
-   problem_size=$(echo "sqrt($avail_mem)" | bc) # Ractangle area
-   problem_size_unit_n=$(($problem_size / 64))    #64B
-   problem_size_unit_nb=$(($problem_size / 8192)) #8KB
+   avail_mem_b=$(percent "$total_mem_b" "$precision")
+   total_problem_size=$(echo "sqrt($avail_mem_b)/$precision" | bc) # Ractangle area
 
-   n_size_str=$(for ii in 64 32 8 2 1; do
-       printf "%s " $(($problem_size_unit_n * $ii))
-   done)
-   n_size_num=5
+   #Problem size
+   Ns=($(for ii in 40 50 70 85 100; do
+       printf "%s " $(percent "$total_problem_size" "$ii")
+   done))
 
-   nb_size_str=$(for ii in 1 2 32 512 2048 4096 8192; do
-       printf "%s " $(($problem_size_unit_nb * $ii))
-   done)
-   nb_size_num=7
+   #Problem block size
+   #NBs=(8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 136 144 152 160 168 176 184 192 200 208 216 224 232 240 248 256)
+   NBs=(8 40 72 96 104 112 120 128 136 144 152 160 168 176 184 192 200)
 # NB x NBs
 #   nb_size=$(($(($total_cores/$precision))/2))
 #   for ii in 8 6 4 2 1; do
@@ -66,10 +73,10 @@ hpl_data() {
 Innovative Computing Laboratory, University of Tennessee
 HPL.out      output file name (if any)
 6            device out (6=stdout,7=stderr,file)
-$n_size_num            # of problems sizes (N)
-$n_size_str      Ns
-$nb_size_num            # of NBs
-$nb_size_str         NBs
+${#Ns[*]}            # of problems sizes (N)
+${Ns[*]}      Ns
+${#NBs[*]}            # of NBs
+${NBs[*]}         NBs
 0            PMAP process mapping (0=Row-,1=Column-major)
 $pqn            # of process grids (P x Q)
 $ps_str           Ps
