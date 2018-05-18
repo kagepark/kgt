@@ -537,7 +537,7 @@ disk_find_lvm() {
          echo "  VG Name : $lv_gname (size: $vg_size)"
          echo "  LV Name : $lv_name (size: $lv_size)"
          pvs | awk -v vg=$lv_gname '{if($2 == vg) printf "%s (%s/%s)\n",$1,$6,$5}' |sed "s/<//g" | while read line; do
-             model=$(cat /sys/class/block/$(basename $(echo $line|awk '{print $1}')/device/model 2>/dev/null)
+             model=$(cat /sys/class/block/$(basename $(echo $line|awk '{print $1}')/device/model 2>/dev/null))
              echo "   $line ($model)"
          done
     fi
