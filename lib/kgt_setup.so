@@ -23,6 +23,7 @@ build_pip() {
    if [ ! -n "$(whereis pip | awk -F: '{print $2}')" ]; then
      if curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py" ; then
         python get-pip.py
+        rm -f get-pip.py
      else
         easy_install pip
      fi
