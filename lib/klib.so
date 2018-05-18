@@ -382,15 +382,9 @@ _k_get_all_hostname() {
             done
          fi
       else
-         if [ "$KGT_HOSTNAME_DASH" == "1" -o "$use_hostname_dash" == "1" ]; then
-            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | while read line; do
-               [ "$(echo "$line" | grep -o "-" | wc -l)" == "1" ] && echo $line
-            done
-         else
-            grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | grep -e "^${group_name}[0-9]" -e "^${group_name}$" | while read line; do
-               echo $line
-            done
-         fi
+         grep -v -e "^127.0.0.1" -e "^#" -e "^::1" /etc/hosts | awk '{print $2}' | while read line; do
+            echo $line
+         done
       fi
    fi
 }

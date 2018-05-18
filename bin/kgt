@@ -9,7 +9,7 @@
 # 03/31/2014 upgrade function for using old shell libraries and muerge old commands to KC
 # get some functions from Kage old shell functions
 # and remake inteligent shell with mixed old kage shells
-_KGT_VERSION=2.1.12
+_KGT_VERSION=v2.2-61-gaea738e
 Ttag=gt
 
 error_exit() {
@@ -44,6 +44,7 @@ _help() {
     echo
     if [ "$no_cmd" != "1" ]; then
     echo " <command>"
+    echo "mkhname           # display hostname which is made or get from /etc/hosts"
     cat $_KGT_HOME/etc/kgt.hlp
     fi
     exit
@@ -82,9 +83,9 @@ if [ "$cmd" == "help" -o "$cmd" == "--help" ]; then
 elif [ "$cmd" == "version" -o "$cmd" == "--version" ]; then
     [ -d $_KGT_HOME/.git ] && (cd $_KGT_HOME && git describe --tags) || \
     echo "$_KGT_VERSION"
-elif [ "$cmd" == "hostname" ]; then
+elif [ "$cmd" == "mkhname" ]; then
     shift 1
-    if [ "$#" == "0" ]; then
+    if [ "$1" == "--help" ]; then
        _help 1
     fi
     _k_make_hostname "$@"
