@@ -9,7 +9,7 @@
 # 03/31/2014 upgrade function for using old shell libraries and muerge old commands to KC
 # get some functions from Kage old shell functions
 # and remake inteligent shell with mixed old kage shells
-_KGT_VERSION=v2.2-61-gaea738e
+_KGT_VERSION=v2.2-64-g48c2a12
 Ttag=gt
 
 error_exit() {
