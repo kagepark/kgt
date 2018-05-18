@@ -479,7 +479,9 @@ _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt  )
     else
       setup_help
     fi
+    if [ "$1" != "update" ]; then
     # build_ansible 
     echo "Please run \"source /etc/profile.d/kgt.sh\""
     echo "Build and setup done"
+    fi
 }
