@@ -3,6 +3,449 @@
 # Kage Park
 # License : GPL
 ####################################
+MegaRaid_CMD=/usr/local/mon_disk/MegaRaid/CmdTool2
+_3Ware_CMD=/usr/local/mon_disk/3ware/tw_cli
+_areca_CMD=/usr/local/mon_disk/areca/cli64
+_smcli_CMD=SMcli
+
+kprint() {
+   if [ "$1" == "-n" ]; then
+          skip=on
+      shift 1
+   fi
+   printf " %-30s " "$1"
+   if [ -n "$2" ]; then
+     printf ":"
+     printf "\t %-s" "$(echo $2 | sed "s/^ //g")"
+   fi
+   [ "$kip" == "on" ] || printf "\n"
+}
+
+_megaraid(){
+   local mode _FAIL_DISKS _CMD_RAID _RAID_VD _RAID_PD _RAID_TAPD chk VD_NUM _ADP
+   mode=$1
+   _CMD_RAID=$MegaRaid_CMD
+   if [ -f $_CMD_RAID ]; then
+      _ADP=$($_CMD_RAID -PDGetNum -aALL | grep "Number of Physical" | awk '{print $7}' | sed "s/://g")
+      for adp_num in $_ADP; do
+        _RAID_VD=$($_CMD_RAID -LDGetNum -a$adp_num |grep "Number of Virtual" | awk -F: '{print $2}' | sed "s/ //g")
+        _RAID_TAPD=0
+        for N in $(seq 1 $_RAID_VD); do
+           _RAID_LD_STATE[$N]=$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep -w "^State:" | awk -F: '{print $2}' | sed "s/ //g")
+           if [ "$mode" == "d" ]; then
+               if [ "${_RAID_LD_STATE[$N]}" != "Optimal" ]; then
+                  logger "$(basename $0): MagaRaid[a$adp_num]: L$(($N - 1)) State : ${_RAID_LD_STATE[$N]}"
+                  echo "$(basename $0): MagaRaid[a$adp_num]: L$(($N - 1)) State : ${_RAID_LD_STATE[$N]}" >> /tmp/raid.email
+               fi
+           else
+               _RAID_PD=$($_CMD_RAID -PDGetNum -a$adp_num |grep "Number of Physical" | awk -F: '{print $2}' | sed "s/ //g")
+               _RAID_FW=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^FW Version" | awk -F: '{print $2}' | sed "s/ //g")
+               _RAID_RAM_SIZE=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^Memory Size" | awk -F: '{print $2}' | sed "s/ //g")
+               _RAID_AUTO=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^Auto Rebuild" | awk -F: '{print $2}' | sed "s/ //g")
+               _RAID_SN=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^Serial No" | awk -F: '{print $2}' | sed "s/ //g")
+               _RAID_PNAME=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^Product Name" | awk -F: '{print $2}' | sed "s/^ //g")
+#               _RAID_CACHED_IO=$($_CMD_RAID -AdpAllInfo -a$adp_num | grep "^Cached IO" | awk -F: '{print $2}' | sed "s/^ //g")
+               _RAID_BBU=$($_CMD_RAID -AdpBbuCmd -GetBbuStatus -a$adp_num | grep "^BatteryType:" | awk -F: '{print $2}' | sed "s/^ //g")
+               _RAID_BBU_REPLACE=$($_CMD_RAID -AdpBbuCmd -GetBbuStatus -a$adp_num | grep "Battery Replacement required" | awk -F: '{print $2}' | sed "s/^ //g")
+               _RAID_BBU_CHARGE=$($_CMD_RAID -AdpBbuCmd -GetBbuStatus -a$adp_num | grep "^Relative State of Charge" | awk -F: '{print $2}' | sed "s/^ //g")
+               _RAID_APD=$( $_CMD_RAID -LDInfo -L$(( $_RAID_VD - $N )) -a$adp_num | grep "Number Of Drives" | awk -F: '{print $2}' )
+               _RAID_TAPD=$(( $_RAID_APD + $_RAID_TAPD ))
+               _RAID_VD_LEVEL[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep "RAID Level" | awk '{print $3}' | awk -F- '{print $2}'| sed 's/,//g')"
+               _RAID_VD_SIZE[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep "^Size" | awk -F: '{print $2}')"
+               _RAID_VD_ND[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep "^Number Of Drives" | awk -F: '{print $2}')"
+               _RAID_VD_DISK_CACHE[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep "^Disk Cache Policy" | awk -F: '{print $2}' | sed "s/ //g")"
+               _RAID_VD_CUR_CACHE[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep "^Current Cache Policy" | awk -F: '{print $2}' | sed "s/^ //g")"
+               _RAID_VD_CONSIS[$N]="$($_CMD_RAID  -LDInfo -L$(($N-1)) -a$adp_num |grep -w "Consistency")"
+               _RAW_SIZE[$N]=$($_CMD_RAID -LDPDInfo  -a$adp_num | while read line ; do
+                    if echo $line | grep "^Virtual Disk:" > /dev/null ; then
+                         VD_NUM=$(echo $line | awk -F: '{print $2}' | awk '{print $1}')
+                    fi
+
+                    if [ "$VD_NUM" == "$(($N-1))" ]; then
+                         if echo $line | grep "^PD:" | grep "Information$" | grep 0 >& /dev/null; then
+                             chk=1
+                         fi
+
+                         if [ "$chk" == "1" ]; then
+                             if echo $line | grep "^Raw Size:">& /dev/null; then
+                                  echo $(echo $line | grep "^Raw Size:" | awk -F: '{print $2}' | awk '{printf "%s %s",$1,$2}')
+                                  break
+                             fi
+                         fi
+                    fi
+               done)
+           fi
+        done
+
+        _FAIL_DISKS="$( echo $($_CMD_RAID -PDList -aALL | while read line; do  if echo $line |grep "^Enclosure Device ID:" >& /dev/null ; then  e=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); else if echo $line |grep "^Slot Number:" >& /dev/null ; then  s=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); fi; if echo $line | grep "^Firmware state:" >& /dev/null; then state=$(echo $line | awk -F: '{print $2}' | awk -F, '{print $1}' | sed "s/ //g");  if [ "$state" != "Online" -a "$state" != "Hotspare" ]; then echo "E$e:S$s($state)"; fi ; fi; fi; done ) )"
+
+        if [ "$mode" == "d" ]; then
+          if [ -n "$_FAIL_DISKS" ]; then
+             logger "$(basename $0): MegaRaid[a$adp_num]: Issued Disk's Enc & Slot numbers : $_FAIL_DISKS"
+             echo "$(basename $0): MegaRaid[a$adp_num]: Issued Disk's Enc & Slot numbers : $_FAIL_DISKS" >> /tmp/raid.email
+          fi
+          if [ -f /tmp/raid.email ]; then
+             echo  >> /tmp/raid.email
+             echo "Checking time : $(date)" >> /tmp/raid.email
+             echo "monitoring path : $0" >> /tmp/raid.email
+             echo "help  : $(basename $0) -h" >> /tmp/raid.email
+             for mail in $email ; do
+                mail -s $(hostname)_disk_information $mail < /tmp/raid.email
+             done
+             rm -f /tmp/raid.email
+          fi
+        else
+          [ -n "$_FAIL_DISKS" ] || _FAIL_DISKS=None
+          if [ "$mode" == "v" ]; then
+              kprint "   Product Name[$adp_num]" "$_RAID_PNAME"
+              kprint "   Serial Number[$adp_num]" "$_RAID_SN"
+              kprint "   FW Version[$adp_num]" "$_RAID_FW"
+              kprint "   Memory size[$adp_num]" "$_RAID_RAM_SIZE"
+              kprint "   Auto rebuild[$adp_num]" "$_RAID_AUTO"
+              kprint "   Battery Type[$adp_num]" "$_RAID_BBU"
+              kprint "   Battery Replacement Req.[$adp_num]" "$_RAID_BBU_REPLACE"
+              kprint "   Battery Charge[$adp_num]" "$_RAID_BBU_CHARGE"
+              kprint "   Physical Drives[$adp_num]" "$_RAID_PD"
+              _RAID_NFD=$(( $_RAID_PD - $_RAID_TAPD ))
+              kprint "   Free Physical Drives[$adp_num]" "$_RAID_NFD"
+              kprint "   Virtual Drives[$adp_num]" "$_RAID_VD"
+          fi
+          for N in $(seq 1 $_RAID_VD); do
+              if [ "$mode" == "v" ]; then
+                  kprint "    - L$(($N - 1)) Raid Level" "${_RAID_VD_LEVEL[$N]}"
+                  kprint "    - L$(($N - 1)) Volume Size" "${_RAID_VD_SIZE[$N]}"
+                  kprint "    - L$(($N - 1)) # of Physical Disk" "${_RAID_VD_ND[$N]}"
+                  kprint "    - L$(($N - 1)) Physical Disk Size" "${_RAW_SIZE[$N]}"
+                  kprint "    - L$(($N - 1)) Current Cache" "${_RAID_VD_CUR_CACHE[$N]}"
+                  kprint "    - L$(($N - 1)) Disk Cache" "${_RAID_VD_DISK_CACHE[$N]}"
+              fi
+              kprint "    - L$(($N - 1)) State" "${_RAID_LD_STATE[$N]} $([ "${_RAID_LD_STATE[$N]}" == "Optimal" ] && echo "(OK)" )"
+              if [ "$mode" == "v" ]; then
+                  [ -n "${_RAID_VD_CONSIS[$N]}" ] && kprint "    -L$(($N - 1)) Consistency" "Yes (Check please for Disk speed)"
+              fi
+          done
+          if [ "$mode" == "v" ]; then
+              kprint "    - Issued Disk's [E#:S#]s" "$_FAIL_DISKS"
+          fi
+        fi
+        echo
+      done
+   fi
+}
+
+
+_megaraid_replace() {
+  local FAIL_DISKS _CMD_RAID
+   _CMD_RAID=$MegaRaid_CMD
+  FAIL_DISKS="$( echo $($_CMD_RAID -PDList -aALL | while read line; do  if echo $line | grep "^Adapter" >/dev/null; then a=$(echo $line | awk '{print $2}' | sed "s/\#//g"); fi; if echo $line |grep "^Enclosure Device ID:" >& /dev/null ; then  e=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); else if echo $line |grep "^Slot Number:" >& /dev/null ; then  s=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); fi; if echo $line | grep "^Firmware state:" >& /dev/null; then state=$(echo $line | awk -F: '{print $2}' | awk -F, '{print $1}' | sed "s/ //g");  if [ "$state" != "Online" ]; then echo "$a:$e:$s"; fi ; fi; fi; done) )"
+
+
+  for pdoff in $FAIL_DISKS; do
+    raid=( $(echo $pdoff | sed "s/:/ /g" ) )
+    adp=${raid[0]}
+    phy="${raid[1]}:${raid[2]}"
+
+    echo
+    echo
+    echo -n "Disk of Adapter:$adp,  Enclosure:${raid[1]}, Slot:${raid[2]} is correct [Y/n]? "
+    read y
+    [ -n "$y" ] || y=y
+    if [ "$y" != "y" -a "$y" != "Y" ]; then
+        echo "Bye~"
+        exit
+    fi
+
+    $_CMD_RAID -PDOffline -PhysDrv [$phy] -a$adp
+    sleep 2
+    $_CMD_RAID -PDMarkMissing -PhysDrv [$phy] -a$adp
+    sleep 2
+    $_CMD_RAID -PDPrpRmv -PhysDrv [$phy] -a$adp
+
+    echo
+    echo
+    echo "Replace the physical disk (Adapter:$adp,  Enclosure:${raid[1]}, Slot:${raid[2]})"
+    echo  "and anykey to continue"
+    echo
+    read x
+
+    ar=( $($_CMD_RAID -PDGetMissing -a$adp | awk '{if ($1 == 0) printf "%s %s",$2,$3 }') )
+    $_CMD_RAID -PdReplaceMissing -PhysDrv [$phy] -Array${ar[0]} -row${ar[1]} -a$adp
+    $_CMD_RAID -PDRbld -Start -PhysDrv [$phy] -a$adp
+
+    echo
+    echo
+    echo "Start rebuild the physical disk (Adapter:$adp,  Enclosure:${raid[1]}, Slot:${raid[2]})"
+    echo
+    echo
+  done
+
+}
+
+
+_megaraid_progress() {
+  local FAIL_DISKS _CMD_RAID
+   _CMD_RAID=$MegaRaid_CMD
+  FAIL_DISKS="$( echo $($_CMD_RAID -PDList -aALL | while read line; do  if echo $line | grep "^Adapter" >/dev/null; then a=$(echo $line | awk '{print $2}' | sed "s/\#//g"); fi; if echo $line |grep "^Enclosure Device ID:" >& /dev/null ; then  e=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); else if echo $line |grep "^Slot Number:" >& /dev/null ; then  s=$(echo $line | awk -F: '{print $2}' | sed "s/ //g"); fi; if echo $line | grep "^Firmware state:" >& /dev/null; then state=$(echo $line | awk -F: '{print $2}' | awk -F, '{print $1}' | sed "s/ //g");  if [ "$state" != "Online" ]; then echo "$a:$e:$s"; fi ; fi; fi; done) )"
+
+
+  while [ 1 ]; do
+    for pdoff in $FAIL_DISKS; do
+       raid=( $(echo $pdoff | sed "s/:/ /g" ) )
+       adp=${raid[0]}
+       phy="${raid[1]}:${raid[2]}"
+
+       $_CMD_RAID -PDRbld -ShowProg -PhysDrv [$phy] -a$adp | grep "Rebuild Progress"
+    done
+    sleep $sleep
+  done
+}
+
+
+_md() {
+   echo not ready
+}
+
+
+_areca() {
+          disks=( $($_areca_CMD rsf info | while read line; do
+               if echo $line | grep "^[0-9]" >& /dev/null; then
+                   disk_info=($line)
+                   disk_info_num=$((${#disk_info[*]}-1))
+                   echo "${disk_info[0]}:${disk_info[$(($disk_info_num-4))]}:${disk_info[$(($disk_info_num-1))]}:${disk_info[$disk_info_num]}"
+               fi
+          done) )
+
+          chk_num=1
+          vol_num=1
+          pri_vol=0
+          vol=($(echo "${disks[*]}" | sed "s/:/ /g" | awk '{printf "%s %s\n",$1,$5}'))
+          vol_dnum=($(echo "${disks[*]}" | sed "s/:/ /g" | awk '{printf "%s %s\n",$2,$6}'))
+          fail_disks="$($_areca_CMD disk info | grep -v -e "N.A." -e "^==" -e "ModelName" -e "^GuiErr" | while read line ; do
+             if (($chk_num>$((${vol_dnum[$(($vol_num-1))]}+$pri_vol)))); then
+                  vol_num=$(($vol_num+1))
+                  pri_vol=$chk_num
+             fi
+
+             echo "$line" | grep "Failed" | awk -v voln=${vol[$(($vol_num-1))]} '{printf "%s:E%s:S%s\n",voln,$2,$4}'
+             chk_num=$(($chk_num+1))
+          done)"
+
+          _RAID_VD=""
+          for disk_ii in ${disks[*]}; do
+                    disk_info=( $(echo $disk_ii | sed "s/:/ /g")  )
+                    _RAID_PD=$(( $_RAID_PD + ${disk_info[1]} ))
+                    _RAID_VD="$_RAID_VD ${disk_info[0]}"
+                    _RAW_SIZE[${disk_info[0]}]=${disk_info[2]}
+          done
+          if [ "$mode" == "v" ]; then
+              kprint "   Physical Drives" "$_RAID_PD"
+              kprint "   Virtual Drive #" "$(echo $_RAID_VD | sed "s/^ //g")"
+          fi
+          for N in $_RAID_VD; do
+            _RAID_INFO=( $($_areca_CMD vsf info vol=$N | while read line; do
+                                                                        if echo $line | grep "^Volume Capacity" >& /dev/null ; then
+                                                                           echo -n $line | awk -F: '{printf "%s ",$2}'
+                                    elif echo $line | grep "^Raid Level" >& /dev/null ; then
+                                                                           echo -n $line | awk -F: '{printf "%s ",$2}' | sed "s/Raid//g"
+                                    elif echo $line | grep "^Member Disks" >& /dev/null ; then
+                                                                           echo -n $line | awk -F: '{printf "%s ",$2}'
+                                    elif echo $line | grep "^Cache Mode" >& /dev/null ; then
+                                                                           echo -n $line | sed "s/ //g" | awk -F: '{printf "%s ",$2}'
+                                    elif echo $line | grep "^Volume State" >& /dev/null ; then
+                                                                           echo -n $line | awk -F: '{printf "%s ",$2}'
+                                                                        fi
+                                                                        done
+                                                                        ) )
+            _RAID_LD_STATE[$N]=${_RAID_INFO[4]}
+            _FAIL_DISKS=$(echo "$fail_disks" | awk -F: -v vol=$N '{if($1==vol) printf "%s:%s",$2,$3}')
+            if [ "$mode" == "d" ]; then
+              if [ "$(echo ${_RAID_LD_STATE[$N]}|sed "s/ //g")" != "Normal" ]; then
+                  logger "$(basename $0): c$(($N - 1)) State" "${_RAID_LD_STATE[$N]}"
+                  echo "$(basename $0): c$(($N - 1)) State" "${_RAID_LD_STATE[$N]} $([ -n "$_FAIL_DISKS" ] && echo "=>$_FAIL_DISKS")" >> /tmp/raid.email
+              fi
+            else
+              if [ "$mode" == "v" ]; then
+                  _RAID_VD_CACHE[$N]=${_RAID_INFO[3]}
+                  _RAID_VD_LEVEL[$N]=${_RAID_INFO[1]}
+                  _RAID_VD_SIZE[$N]=${_RAID_INFO[0]}
+                  _RAID_VD_ND[$N]=${_RAID_INFO[2]}
+                  kprint "    - vol $N Raid Level" "${_RAID_VD_LEVEL[$N]}"
+                  kprint "    - vol $N Volume Size" "${_RAID_VD_SIZE[$N]}"
+                  kprint "    - vol $N # of Physical Disk" "${_RAID_VD_ND[$N]}"
+                  kprint "    - vol $N Physical Disk Size" "${_RAW_SIZE[$N]}"
+                  kprint "    - vol $N Cache" "${_RAID_VD_CACHE[$N]}"
+              fi
+              kprint "    - vol $N State" "${_RAID_LD_STATE[$N]} $([ -n "$_FAIL_DISKS" ] && echo "=>$_FAIL_DISKS")"
+            fi
+          done
+
+          if [ "$mode" == "d" ]; then
+             if [ -f /tmp/raid.email ]; then
+               echo  >> /tmp/raid.email
+               echo "Checking time : $(date)" >> /tmp/raid.email
+               echo "monitoring path : $0" >> /tmp/raid.email
+               echo "help  : $(basename $0) -h" >> /tmp/raid.email
+               for mail in $email ; do
+                 mail -s $(hostname)_disk_information $mail < /tmp/raid.email
+               done
+               rm -f /tmp/raid.email
+             fi
+          fi
+}
+
+_3ware() {
+          disks=( $($_3Ware_CMD info | grep "^c[0-9]" | awk '{printf "%s:%s ",$1,$4}') )
+
+          if [ "$mode" != "d" ]; then
+            for i in ${disks[*]}; do
+              _RAID_PD=$(( $_RAID_PD + $(echo $i | awk -F: '{print $2}') ))
+            done
+          fi
+
+          _RAID_VD=${#disks[*]}
+          if [ "$mode" == "v" ]; then
+              kprint "   Physical Drives" "$_RAID_PD"
+              kprint "   Virtual Drives" "$_RAID_VD"
+          fi
+
+          for N in $(seq 1 $_RAID_VD); do
+            _RAID_INFO=( $( $_3Ware_CMD /c$(($N - 1)) show all | grep RAID ) )
+            _RAID_LD_STATE[$N]=${_RAID_INFO[2]}
+            _FAIL_DISKS="$_FAIL_DISKS $($_3Ware_CMD /c$(($N - 1)) show all | grep "^p[0-9]" | awk -v nn=$(($N - 1)) '{if($2 != "OK" && $2 != "NOT-PRESENT") printf "c%s:%s ",nn,$1 }')"
+            if [ "$mode" == "d" ]; then
+              if [ "${_RAID_LD_STATE[$N]}" != "OK" ]; then
+                  logger "$(basename $0): c$(($N - 1)) State" "${_RAID_LD_STATE[$N]}"
+                  echo "$(basename $0): c$(($N - 1)) State" "${_RAID_LD_STATE[$N]}" >> /tmp/raid.email
+              fi
+            else
+              if [ "$mode" == "v" ]; then
+                  _RAID_VD_CACHE[$N]=${_RAID_INFO[7]}
+                  _RAID_VD_LEVEL[$N]=$(echo ${_RAID_INFO[1]} | sed "s/RAID-//g")
+                  _RAID_VD_SIZE[$N]=${_RAID_INFO[6]}
+                  _RAID_VD_ND[$N]=$(echo ${disks[$(($N - 1))]} | awk -F: '{print $2}')
+                  _RAW_SIZE[$N]=$( $_3Ware_CMD /c$(($N - 1)) show all | awk '{if ($2=="OK") printf "%s %s\n",$4,$5}' | head -n 1 )
+                  kprint "    - c$(($N - 1)) Raid Level" "${_RAID_VD_LEVEL[$N]}"
+                  kprint "    - c$(($N - 1)) Volume Size" "${_RAID_VD_SIZE[$N]}"
+                  kprint "    - c$(($N - 1)) # of Physical Disk" "${_RAID_VD_ND[$N]}"
+                  kprint "    - c$(($N - 1)) Physical Disk Size" "${_RAW_SIZE[$N]}"
+                  kprint "    - c$(($N - 1)) Cache" "${_RAID_VD_CACHE[$N]}"
+              fi
+              kprint "    - c$(($N - 1)) State" "${_RAID_LD_STATE[$N]}"
+            fi
+          done
+
+          if [ "$mode" == "d" ]; then
+             if [ -n "$(echo $_FAIL_DISKS| sed "s/ //g")" ];then
+                  logger "$(basename $0): 3Ware: Issued Disk's numbers : >${_FAIL_DISKS}<"
+                  echo "$(basename $0): 3Ware: Issued Disk's numbers : $_FAIL_DISKS" >> /tmp/raid.email
+             fi
+             if [ -f /tmp/raid.email ]; then
+               echo  >> /tmp/raid.email
+               echo "Checking time : $(date)" >> /tmp/raid.email
+               echo "monitoring path : $0" >> /tmp/raid.email
+               echo "help  : $(basename $0) -h" >> /tmp/raid.email
+               for mail in $email ; do
+                 mail -s $(hostname)_disk_information $mail < /tmp/raid.email
+               done
+               rm -f /tmp/raid.email
+             fi
+          elif [ "$mode" == "v" ]; then
+              kprint "    - Issued Disks" "$_FAIL_DISKS"
+          fi
+}
+
+_lsi() {
+          local netapp_ip mode
+          if [ ! -f $_smcli_CMD ]; then
+              return 1
+          fi
+          mode=$1
+          netapp_ip=$2
+          if [ -n "$netapp_ip" ]; then
+              netapp_cmd="$netapp_ip"
+          else
+              #Name, controllerA IP, controllerB IP, status
+              netapp_info=( $($_smcli_CMD -d -v | head -n1) )
+              (( ${#netapp_info[*]} > 7 )) && error_exit "Please try again to $(basename $0) -v -ip <NetAPP outbound IP>"
+              netapp_cmd="-n ${netapp_info[0]}"
+          fi
+
+          #Volume group, Controllers, Drives, hotspare
+          disk_info=($($_smcli_CMD $netapp_cmd -c "show storageArray healthStatus summary;" | grep -e "Drives:" -e "Controllers:" -e "Volume groups" -e "Total hot spare drives:" | awk -F: '{print $2}') )
+
+          if [ "$mode" == "v" ]; then
+              kprint "   Controllers" "${disk_info[1]}"
+              kprint "   Physical Drives" "${disk_info[2]}"
+              kprint "    - Hot spare drives" "${disk_info[3]}"
+              kprint "   Volume Groups" "${disk_info[0]}"
+          fi
+
+          vol_num=0
+          tmp_file=$(mktemp -u /tmp/mon_disk.XXXXXXXXXX)
+          $_smcli_CMD $netapp_cmd -c "show allVolumes;"| while read line; do
+                echo $line | grep "^Volume name:" >& /dev/null && vol_num=$(($vol_num+1))
+                if (($vol_num>0)); then
+                    echo $line | grep "^Volume name:" >& /dev/null && echo "vol_name[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Volume status:" >& /dev/null && echo "vol_state[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Capacity:" >& /dev/null && echo "vol_size[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^RAID level:" >& /dev/null && echo "vol_raid[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Read cache:" >& /dev/null && echo "vol_rcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Write cache:" >& /dev/null && echo "vol_wcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Flush write cache after (in seconds):" >& /dev/null && echo "vol_fwcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Write cache with mirroring:" >& /dev/null && echo "vol_mwcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Write cache without batteries:" >& /dev/null && echo "vol_bwcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                    echo $line | grep "^Dynamic cache read prefetch:" >& /dev/null && echo "vol_dcache[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
+                fi
+          done
+          if [ -f $tmp_file ]; then
+            source $tmp_file
+            for ((ii=1; ii<=${#vol_name[*]}; ii++)); do
+              if [ "$mode" == "d" ]; then
+                echo "Not yet"
+              else
+                if [ "$mode" == "v" ]; then
+                  kprint "    - Vol name" "${vol_name[$ii]}"
+                  kprint "    - Raid Level" "${vol_raid[$ii]}"
+                  kprint "    - Volume Size" "${vol_size[$ii]}"
+                  kprint "    - # of Physical Disk" "$($_smcli_CMD $netapp_cmd -c "show allDrives;" | grep "Associated volume group" | grep -w ${vol_name[$ii]} | wc -l)"
+                  kprint "    - Read cache" "${vol_rcache[$ii]}"
+                  kprint "    - Write cache" "${vol_wcache[$ii]}"
+                  kprint "    - Write cache without batteries" "${vol_bwcache[$ii]}"
+                  kprint "    - Write cache with mirroring" "${vol_mwcache[$ii]}"
+                  kprint "    - Flush cache" "${vol_fwcache[$ii]} sec"
+                  kprint "    - Dynamic cache read prefetch" "${vol_dcache[$ii]}"
+                fi
+                kprint "    - State" "${vol_state[$ii]}"
+              fi
+            done
+            rm -f $tmp_file
+          fi
+
+          if [ "$mode" == "d" ]; then
+              echo "Not yet"
+          elif [ "$mode" == "v" ]; then
+              kprint "    - Issued Disks" "$_smcli_CMD $netapp_cmd -c \"show allDrives;\" CLI cmd will be helpful"
+          fi
+}
+
+_lvm() {
+  [ -f /usr/sbin/lvs ] || return 1
+  echo " << Check Disk/LVM >>"
+  vgs  |awk '{if($1!="VG") printf "%s (%s/%s)\n",$1,$7,$6}' | sed "s/<//g" | while read vg; do
+    echo " VG NAME: $vg"
+    vg_name=$(echo $vg | awk '{print $1}')
+    pvs | awk -v vg=$vg_name '{if($2 == vg) printf "%s (%s/%s)\n",$1,$6,$5}' | sed "s/<//g" | while read pv; do
+        echo "   PV NAME: $pv"
+    done
+    lvs $vg_name | awk '{if($1!="LV") printf "%s (%s)\n",$1,$4}' | while read lv; do
+           lv_name=$(echo $lv | awk '{print $1}')
+           dev_path=$([ -L /dev/mapper/${vg_name}-${lv_name} ] && echo /dev/mapper/${vg_name}-${lv_name} || echo /dev/${vg_name}/${lv_name})
+           echo "   LV NAME: $lv"
+           echo "      DEV NAME : $dev_path"
+           echo "      MOUNT DIR: $(lsblk $dev_path | grep -v "^NAME" | awk '{print $7}')"
+    done
+  done
+}
 
 test_fio(){
      _k_root
@@ -26,7 +469,7 @@ test_iozon(){
      echo "Look output /tmp/iozone.output.xls"
 }
 
-run_test() {
+disk_test() {
   if [ "$1" == "fio" ]; then
      shift 1
      test_fio $*
@@ -36,16 +479,96 @@ run_test() {
   fi
 }
 
+disk_check() {
+   kprint "<< Check Disk/Raid >>"
+   df -h 2>/dev/null | grep "^/dev/" | while read line ; do
+        disk=( $line )
+        kprint "${disk[5]}"  "${disk[4]}"
+   done
+
+   _RAID_CARD=$(lspci | grep -i raid | grep -w Areca > /dev/null && echo Areca)
+   [ -n "$_RAID_CARD" ] || _RAID_CARD=$(lspci | grep -i raid | grep -w 3ware > /dev/null && echo 3ware)
+   [ -n "$_RAID_CARD" ] || _RAID_CARD=$(lspci | grep -i raid | grep -w MegaRAID > /dev/null && echo MegaRaid)
+   [ -n "$_RAID_CARD" ] || _RAID_CARD=$(lspci | grep -i raid | grep -w Areca > /dev/null && echo Areca)
+   [ -n "$_RAID_CARD" ] || _RAID_CARD=$(ls /dev/md* 2> /dev/null | grep "/dev/md" > /dev/null && echo MD)
+   [ -n "$_RAID_CARD" ] || _RAID_CARD=$(lspci -vv |grep LSI | grep Fusion-MPT >/dev/null && echo NetAPP)
+
+   if [ "$mode" == "v" ]; then
+       [ "$mode" == "d" ]   || kprint "Raid Info"  "$_RAID_CARD"
+   fi
+   if [ "$_RAID_CARD" == "MegaRaid" ]; then
+       _megaraid $mode
+   elif [ "$_RAID_CARD" == "3ware" ]; then
+       _3ware $mode
+   elif [ "$_RAID_CARD" == "Areca" ]; then
+       _areca $mode
+   elif [ "$_RAID_CARD" == "MD" ]; then
+       _md $mode
+   elif [ "$_RAID_CARD" == "NetAPP" ]; then
+       _lsi "$mode" "$netapp_ip"
+   fi
+   echo 
+   _lvm
+}
+
 disk_help() {
     echo "$(echo ${FUNCNAME} | sed "s/_help//g") <test name> [<option>]"
     echo
     echo "It will test on local host"
-    echo " fio <test filename> <test file size(ex:4G)>"
-    echo " iozone [<output filename>]"
+    echo " check                : check disk/raid/LVM "
+    echo " find <dev/mount dir> : Find <dev/mount dir> information"
+    echo " test fio <test filename> <test file size(ex:4G)>"
+    echo " test iozone [<output filename>]"
     exit
+}
+
+disk_find_lvm() {
+  dev_path=$*
+  [ -n "$dev_path" ] || dev_path=$(cat /etc/fstab  | grep -v -e "^#" -e " swap "| grep -e "^/dev" -e "^UUID=" | awk '{print $2}')
+  for part_dir in $dev_path; do
+    blk_dev=$(df -h $part_dir | grep -v "^Filesystem" | awk '{print $1}')
+    echo "  DEV Path: $blk_dev"
+    if [ "$(lsblk $blk_dev | awk '{if($6=="lvm") printf "lvm"}')" == "lvm" ]; then
+         lv_info=$(lvs $blk_dev | grep -v "LV   VG")
+         lv_gname=$(echo "$lv_info" | awk '{print $2}')
+         lv_name=$(echo "$lv_info" | awk '{print $1}')
+         lv_size=$(echo "$lv_info" | awk '{print $4}')
+         vg_size=$(vgs $lv_gname | grep -v VFree | awk '{printf "%s/%s",$7,$6}' | sed "s/<//g")
+         echo "  VG Name : $lv_gname (size: $vg_size)"
+         echo "  LV Name : $lv_name (size: $lv_size)"
+         pvs | awk -v vg=$lv_gname '{if($2 == vg) printf "%s (%s/%s)\n",$1,$6,$5}' |sed "s/<//g" | while read line; do
+             echo "   $line"
+         done
+    fi
+  done
+}
+
+disk_find() {
+   local device_name
+   device_name=$1
+   [ -n "$device_name" ] || error_exit "$(basename $0) <device name>|<filename>|<dir name>"
+   if [ ! -b $device_name ]; then
+      device_name=$(findmnt -n -o SOURCE --target $device_name)
+   fi
+   [ -b $device_name ] || error_exit "Not a block device"
+   dev_type=$(lsblk $device_name | grep -v "^NAME" | awk -v dn=$(basename $device_name) '{if($1==dn) print $6}')
+   if [ "$dev_type" == "lvm" ]; then
+      disk_find_lvm $device_name
+#      group_name=$(lvdisplay $device_name | grep "VG Name" | awk '{print $3}')
+#      for ii in $(pvdisplay | grep -e "PV Name" -e "VG Name" | awk '{if($1 == "PV") printf "%s:",$3; else printf "%s\n",$3}' | grep ":${group_name}" | awk -F: '{print $1}'); do
+#         disk_find $ii
+#      done
+   elif echo $dev_type | grep "raid" >& /dev/null; then
+      mdadm --detail $device_name | grep "active sync" | awk '{print $7}'
+   else
+      echo $device_name
+   fi
 }
 
 disk() {
     [ -n "$1" ] || disk_help
-    run_test "$1"
+    cmd=$1
+    shift 1
+    disk_${cmd} "$1" 
+#    run_test "$1"
 }
