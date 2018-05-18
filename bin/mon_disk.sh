@@ -8,6 +8,7 @@
 MegaRaid_CMD=/usr/local/mon_disk/MegaRaid/CmdTool2
 _3Ware_CMD=/usr/local/mon_disk/3ware/tw_cli
 _areca_CMD=/usr/local/mon_disk/areca/cli64
+_smcli_CMD=SMcli
 
 error_exit() {
   echo "$*"
@@ -441,19 +442,23 @@ _3ware() {
 
 _lsi() {
           local netapp_ip mode
+          if [ -f $_smcli_CMD ]; then
+              echo "Please install raid controller application."
+              return 1
+          fi
           mode=$1
           netapp_ip=$2
           if [ -n "$netapp_ip" ]; then
               netapp_cmd="$netapp_ip"
           else
               #Name, controllerA IP, controllerB IP, status
-              netapp_info=( $(SMcli -d -v | head -n1) )
+              netapp_info=( $($_smcli_CMD -d -v | head -n1) )
               (( ${#netapp_info[*]} > 7 )) && error_exit "Please try again to $(basename $0) -v -ip <NetAPP outbound IP>"
               netapp_cmd="-n ${netapp_info[0]}"
           fi
 
           #Volume group, Controllers, Drives, hotspare
-          disk_info=($(SMcli $netapp_cmd -c "show storageArray healthStatus summary;" | grep -e "Drives:" -e "Controllers:" -e "Volume groups" -e "Total hot spare drives:" | awk -F: '{print $2}') )
+          disk_info=($($_smcli_CMD $netapp_cmd -c "show storageArray healthStatus summary;" | grep -e "Drives:" -e "Controllers:" -e "Volume groups" -e "Total hot spare drives:" | awk -F: '{print $2}') )
 
           if [ "$mode" == "v" ]; then
               kprint "   Controllers" "${disk_info[1]}"
@@ -464,7 +469,7 @@ _lsi() {
 
           vol_num=0
           tmp_file=$(mktemp -u /tmp/mon_disk.XXXXXXXXXX)
-          SMcli $netapp_cmd -c "show allVolumes;"| while read line; do
+          $_smcli_CMD $netapp_cmd -c "show allVolumes;"| while read line; do
                 echo $line | grep "^Volume name:" >& /dev/null && vol_num=$(($vol_num+1))
                 if (($vol_num>0)); then
                     echo $line | grep "^Volume name:" >& /dev/null && echo "vol_name[$vol_num]=\"$(echo $line | awk -F: '{print $2}')\"" >> $tmp_file
@@ -489,7 +494,7 @@ _lsi() {
                   kprint "    - Vol name" "${vol_name[$ii]}"
                   kprint "    - Raid Level" "${vol_raid[$ii]}"
                   kprint "    - Volume Size" "${vol_size[$ii]}"
-                  kprint "    - # of Physical Disk" "$(SMcli $netapp_cmd -c "show allDrives;" | grep "Associated volume group" | grep -w ${vol_name[$ii]} | wc -l)"
+                  kprint "    - # of Physical Disk" "$($_smcli_CMD $netapp_cmd -c "show allDrives;" | grep "Associated volume group" | grep -w ${vol_name[$ii]} | wc -l)"
                   kprint "    - Read cache" "${vol_rcache[$ii]}"
                   kprint "    - Write cache" "${vol_wcache[$ii]}"
                   kprint "    - Write cache without batteries" "${vol_bwcache[$ii]}"
@@ -506,7 +511,7 @@ _lsi() {
           if [ "$mode" == "d" ]; then
               echo "Not yet"
           elif [ "$mode" == "v" ]; then
-              kprint "    - Issued Disks" "SMcli $netapp_cmd -c \"show allDrives;\" CLI cmd will be helpful"
+              kprint "    - Issued Disks" "$_smcli_CMD $netapp_cmd -c \"show allDrives;\" CLI cmd will be helpful"
           fi
 }
 
