@@ -10,13 +10,6 @@ find_rpm() {
 
 pre_req() {
    yum install -y  python python-libs python-devel libxml2-python smartmontools dmidecode hdparm pciutils wget libaio-devel libaio tcl tcl-devel sg3_utils gcc gcc-gfortran libgfortran cpp gcc-c++ libgcc libquadmath libquadmath-devel libstdc++ libstdc++-devel screen mc iptables openssl-devel lz4-devel lzo-devel pam-devel expect minicom
-
-#   for ii in gnuplot liberation-sans-fonts liberation-mono-fonts liberation-fonts-common liberation-serif-fonts; do
-#      if ! find_rpm $ii; then
-#        yum install -y $ii || echo "Not found $ii"
-#      fi
-#   done
-#   [ -L /usr/share/fonts/truetype ] || ln -s /usr/share/fonts /usr/share/fonts/truetype
 }
 
 build_pip() {
@@ -431,25 +424,46 @@ install_packages() {
 }
 
 setup() {
+    kgt_pip_modules="cx_Freeze"
+    if [ "$1" == "--help" ]; then
+         echo "$(basename $0) ${FUNCNAME}                   : Setup kgt environment"
+         echo "$(basename $0) ${FUNCNAME} pre_req           : install requirement packages"
+         echo "$(basename $0) ${FUNCNAME} pip [<module> ...]: install pip or modules"
+         echo "$(basename $0) ${FUNCNAME} packages          : install defined tools"
+         echo "$(basename $0) ${FUNCNAME} all               : Setup and install all defined tools"
+         exit
+    fi
     _k_root
     sed -i "/^_KGT_VERSION=/c \
 _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt
-    share_dir_base=$(_k_opt -s 1 0 "$@")
-    [ -n "$share_dir_base" ] || share_dir_base=/global
+
     echo "_KGT_HOME=$_KGT_HOME
 PATH=\${PATH}:\$_KGT_HOME/bin
 export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
     source /etc/profile.d/kgt.sh
+
+    share_dir_base=$(_k_opt -s 1 0 "$@")
+    [ -n "$share_dir_base" ] || share_dir_base=/global
+
     share_dir=$share_dir_base/kgt
-    [ -d $share_dir ] || mkdir -p $share_dir
     if [ "$1" == "pre_req" ]; then
       pre_req 
     elif [ "$1" == "packages" ]; then
+      [ -d $share_dir ] || mkdir -p $share_dir
       install_packages
-    else
+    elif [ "$1" == "pip" ]; then
+      shift 1
+      build_pip
+      if [ -n "$1" ]; then
+          build_pip_modules $*
+      else
+          build_pip_modules $kgt_pip_modules
+      fi
+    elif [ "$1" == "all" ]; then
+      [ -d $share_dir ] || mkdir -p $share_dir
       pre_req 
       build_pip
-      build_pip_modules cx_Freeze
+      build_pip_modules $kgt_pip_modules
       install_packages
     fi
     # build_ansible 
