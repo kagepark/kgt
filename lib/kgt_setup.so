@@ -452,6 +452,8 @@ export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
     share_dir=$share_dir_base/kgt
     if [ "$1" == "update" ]; then
       ( cd $_KGT_HOME
+      sed -i "/^_KGT_VERSION=/c \
+_KGT_VERSION=" $_KGT_HOME/bin/kgt 
       kgt git update
       sed -i "/^_KGT_VERSION=/c \
 _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt  )
