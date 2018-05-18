@@ -432,39 +432,57 @@ setup_help() {
      echo "$(basename $0) ${FUNCNAME} update            : Update KGT Tools to latest"
      exit
 }
+
+unset_version() {
+   (cd $_KGT_HOME
+   sed -i "/^_KGT_VERSION=/c \
+_KGT_VERSION=" $_KGT_HOME/bin/kgt)
+}
+
+set_version() {
+   (cd $_KGT_HOME
+   sed -i "/^_KGT_VERSION=/c \
+_KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt)
+}
+
+setup_env() {
+    echo "_KGT_HOME=$_KGT_HOME
+PATH=\${PATH}:\$_KGT_HOME/bin
+export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
+    set_version
+}
+
 setup() {
     kgt_pip_modules="cx_Freeze"
     if [ "$1" == "--help" ]; then
          setup_help
     fi
     _k_root
-    sed -i "/^_KGT_VERSION=/c \
-_KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt
-
-    echo "_KGT_HOME=$_KGT_HOME
-PATH=\${PATH}:\$_KGT_HOME/bin
-export PATH _KGT_HOME" > /etc/profile.d/kgt.sh
-    source /etc/profile.d/kgt.sh
 
     share_dir_base=$(_k_opt -s 1 0 "$@")
     [ -n "$share_dir_base" ] || share_dir_base=/global
 
     share_dir=$share_dir_base/kgt
     if [ "$1" == "update" ]; then
+      update_tag=1
       ( source /etc/profile.d/kgt.sh
         cd $_KGT_HOME
-        sed -i "/^_KGT_VERSION=/c \
-_KGT_VERSION=" $_KGT_HOME/bin/kgt 
+        unset_version
         kgt git update
-        sed -i "/^_KGT_VERSION=/c \
-_KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt  )
+        set_version )
     elif [ "$1" == "pre_req" ]; then
+      setup_env
+      source /etc/profile.d/kgt.sh
       pre_req 
     elif [ "$1" == "packages" ]; then
+      setup_env
+      source /etc/profile.d/kgt.sh
       [ -d $share_dir ] || mkdir -p $share_dir
       install_packages
     elif [ "$1" == "pip" ]; then
       shift 1
+      setup_env
+      source /etc/profile.d/kgt.sh
       build_pip
       if [ -n "$1" ]; then
           build_pip_modules $*
@@ -472,6 +490,8 @@ _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt  )
           build_pip_modules $kgt_pip_modules
       fi
     elif [ "$1" == "all" ]; then
+      setup_env
+      source /etc/profile.d/kgt.sh
       [ -d $share_dir ] || mkdir -p $share_dir
       pre_req 
       build_pip
@@ -480,7 +500,7 @@ _KGT_VERSION=$(git describe --tags)" $_KGT_HOME/bin/kgt  )
     else
       setup_help
     fi
-    if [ "$1" != "update" ]; then
+    if [ "$update_tag" != "1" ]; then
     # build_ansible 
     echo "Please run \"source /etc/profile.d/kgt.sh\""
     echo "Build and setup done"
