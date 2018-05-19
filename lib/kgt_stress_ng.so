@@ -5,5 +5,5 @@
 ####################################
 stress() {
     _k_load stress_ng
-    [ "${#}" == "0" ] && stress_ng --help || stress_ng $*
+    [ "${#}" == "0" ] && /global/kgt/stress_ng/stress_ng --help || /global/kgt/stress_ng/stress_ng $*
 }
