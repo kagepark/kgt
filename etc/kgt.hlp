@@ -12,6 +12,8 @@ diff       # diff file
 screen     # screen command
 git        # git command
 servicectl # Service(daemon) handle
+stress     # stress test
+stress_ng  # stress test
 
 # Remote host
 check      # Display base items on the system
