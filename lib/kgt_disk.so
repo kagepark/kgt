@@ -522,6 +522,12 @@ disk_help() {
     exit
 }
 
+disk_parent_disk_name() {
+    [ -n "$1" ] || return 1
+    aa=($(readlink -f $1 2>/dev/null | sed "s/\// /g"))
+    for ((ii=0;ii<${#aa[*]};ii++)); do  if [ "${aa[$ii]}" == "block" ]; then echo ${aa[$(($ii+1))]}; break; fi; done
+}
+
 disk_find_lvm() {
   dev_path=$*
   [ -n "$dev_path" ] || dev_path=$(cat /etc/fstab  | grep -v -e "^#" -e " swap "| grep -e "^/dev" -e "^UUID=" | awk '{print $2}')
@@ -537,7 +543,7 @@ disk_find_lvm() {
          echo "  VG Name : $lv_gname (size: $vg_size)"
          echo "  LV Name : $lv_name (size: $lv_size)"
          pvs | awk -v vg=$lv_gname '{if($2 == vg) printf "%s (%s/%s)\n",$1,$6,$5}' |sed "s/<//g" | while read line; do
-             model=$(cat /sys/class/block/$(basename $(echo $line|awk '{print $1}'))/device/model 2>/dev/null)
+             model=$(cat /sys/class/block/$(disk_parent_disk_name $(echo $line|awk '{print $1}')) 2>/dev/null)
              echo "   $line ($model)"
          done
     fi
