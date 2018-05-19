@@ -531,6 +531,9 @@ disk_parent_disk_name() {
 disk_find_lvm() {
   dev_path=$*
   [ -n "$dev_path" ] || dev_path=$(cat /etc/fstab  | grep -v -e "^#" -e " swap "| grep -e "^/dev" -e "^UUID=" | awk '{print $2}')
+
+  hdd_dev_type_arr=($(for ii in $(ls /dev/disk/by-path/); do dev_n=$(readlink -f /dev/disk/by-path/$ii| sed "s#/dev/##g"); dev_type=($(echo $ii | sed "s/-/ /g")); echo "${dev_n}:${dev_type[2]}"; done | sort | uniq))
+
   for part_dir in $dev_path; do
     blk_dev=$(df -h $part_dir | grep -v "^Filesystem" | awk '{print $1}')
     echo "  DEV Path: $blk_dev"
@@ -543,8 +546,9 @@ disk_find_lvm() {
          echo "  VG Name : $lv_gname (size: $vg_size)"
          echo "  LV Name : $lv_name (size: $lv_size)"
          pvs | awk -v vg=$lv_gname '{if($2 == vg) printf "%s (%s/%s)\n",$1,$6,$5}' |sed "s/<//g" | while read line; do
-             model=$(cat /sys/class/block/$(disk_parent_disk_name $(echo $line|awk '{print $1}')) 2>/dev/null)
-             echo "   $line ($model)"
+             hdd=$(disk_parent_disk_name $(echo $line|awk '{print $1}'))
+             disk_type=$(rota=$(cat /sys/block/$hdd/queue/rotational 2>/dev/null); if [ "$rota" == "0" ]; then echo SSD; else ftype=$(for hdt in ${hdd_dev_type_arr[*]}; do if echo $hdt | grep "^${hdd}:" >& /dev/null; then echo $hdt |sed "s/^${hdd}://g"; break; fi;done); [ -n "$ftype" ] && echo $ftype || echo unknown ; fi )
+             echo "   $line ($disk_type)"
          done
     fi
   done
