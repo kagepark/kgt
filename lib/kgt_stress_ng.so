@@ -3,7 +3,7 @@
 # Kage Park
 # License : GPL
 ####################################
-stress() {
+stress_ng() {
     _k_load stress_ng
     [ "${#}" == "0" ] && /global/kgt/stress_ng/stress_ng --help || /global/kgt/stress_ng/stress_ng $*
 }
