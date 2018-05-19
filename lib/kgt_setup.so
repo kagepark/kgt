@@ -341,7 +341,7 @@ build_stress() {
 #
 #  Stress
 #
-prepend-path            PATH            $share_dir/stress
+prepend-path            PATH            $share_dir/stress/bin
 EOF
        fi
    else
