@@ -524,7 +524,7 @@ disk_help() {
     echo "It will test on local host"
     echo " check                : check disk/raid/LVM "
     echo " find <dev/mount dir> : Find <dev/mount dir> information"
-    echo " test fio <<test filename> <test file size(ex:4G)>> | -c <fio conf file>"
+    echo " test fio [<<test filename> <test file size(ex:4G)>> | -c <fio conf file>]"
     echo " test iozone [<output filename>]"
     exit
 }
