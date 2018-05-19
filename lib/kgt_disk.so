@@ -524,7 +524,7 @@ disk_help() {
 
 disk_parent_disk_name() {
     [ -n "$1" ] || return 1
-    aa=($(readlink -f $1 2>/dev/null | sed "s/\// /g"))
+    aa=($(readlink -f /sys/class/block/$(basename $1 2>/dev/null) 2>/dev/null | sed "s/\// /g"))
     for ((ii=0;ii<${#aa[*]};ii++)); do  if [ "${aa[$ii]}" == "block" ]; then echo ${aa[$(($ii+1))]}; break; fi; done
 }
 
