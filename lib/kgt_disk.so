@@ -429,6 +429,7 @@ _lsi() {
 }
 
 _lvm() {
+  _k_root
   [ -f /usr/sbin/lvs ] || return 1
   echo " << Check Disk/LVM >>"
   vgs  |awk '{if($1!="VG") printf "%s (%s/%s)\n",$1,$7,$6}' | sed "s/<//g" | while read vg; do
@@ -450,14 +451,20 @@ _lvm() {
 test_fio(){
      _k_root
      _k_env load fio
+     echo
+     echo "** Run FIO for Read Write Performance Test**"
+     echo
+     if [ "$1" == "-c" ]; then
+     [ -n "$2" ] || return 1
+     [ -f "$2" ] || error_exit "$2 not found"
+     fio $2
+     else
      filename=$1
      size=$2
      [ -n "$filename" ] || filename=/tmp/random_read_write.fio
      [ -n "$size" ] || size=4G
-     echo
-     echo "** Run FIO for Read Write Performance Test**"
-     echo
      fio --randrepeat=1 --ioengine=libaio --direct=1 --gtod_reduce=1 --name=test --filename=$filename --bs=4k --iodepth=64 --size=$size --readwrite=randrw --rwmixread=75
+     fi
 }
 
 test_iozon(){
@@ -517,7 +524,7 @@ disk_help() {
     echo "It will test on local host"
     echo " check                : check disk/raid/LVM "
     echo " find <dev/mount dir> : Find <dev/mount dir> information"
-    echo " test fio <test filename> <test file size(ex:4G)>"
+    echo " test fio <<test filename> <test file size(ex:4G)>> | -c <fio conf file>"
     echo " test iozone [<output filename>]"
     exit
 }
@@ -529,6 +536,7 @@ disk_parent_disk_name() {
 }
 
 disk_find_lvm() {
+  _k_root
   dev_path=$*
   [ -n "$dev_path" ] || dev_path=$(cat /etc/fstab  | grep -v -e "^#" -e " swap "| grep -e "^/dev" -e "^UUID=" | awk '{print $2}')
 
@@ -565,10 +573,6 @@ disk_find() {
    dev_type=$(lsblk $device_name | grep -v "^NAME" | awk -v dn=$(basename $device_name) '{if($1==dn) print $6}')
    if [ "$dev_type" == "lvm" ]; then
       disk_find_lvm $device_name
-#      group_name=$(lvdisplay $device_name | grep "VG Name" | awk '{print $3}')
-#      for ii in $(pvdisplay | grep -e "PV Name" -e "VG Name" | awk '{if($1 == "PV") printf "%s:",$3; else printf "%s\n",$3}' | grep ":${group_name}" | awk -F: '{print $1}'); do
-#         disk_find $ii
-#      done
    elif echo $dev_type | grep "raid" >& /dev/null; then
       mdadm --detail $device_name | grep "active sync" | awk '{print $7}'
    else
@@ -580,6 +584,5 @@ disk() {
     [ -n "$1" ] || disk_help
     cmd=$1
     shift 1
-    disk_${cmd} "$1" 
-#    run_test "$1"
+    disk_${cmd} $*
 }
