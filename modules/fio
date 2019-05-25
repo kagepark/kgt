@@ -1,0 +1,7 @@
+#%Module 1.0
+#
+#  FIO
+#
+#conflict               mpi
+prepend-path            PATH            /global/kgt/fio/bin
+prepend-path            MANPATH         /global/kgt/fio/man

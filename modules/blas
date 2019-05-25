@@ -1,0 +1,7 @@
+#%Module 1.0
+#
+#  Blas
+#
+#conflict               mpi
+prepend-path            BLAS_HOME       /global/kgt/blas
+prepend-path            LD_LIBRARY_PATH /global/kgt/blas

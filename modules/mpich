@@ -1,0 +1,18 @@
+#%Module 1.0
+#
+#  MPICH module for use with 'environment-modules' package:
+#
+conflict                mpi
+conflict                mvapich
+prepend-path            PATH            /global/kgt/mpich/bin
+prepend-path            LD_LIBRARY_PATH /global/kgt/mpich/lib
+prepend-path            MANPATH         /global/kgt/mpich/man
+prepend-path            PKG_CONFIG_PATH /global/kgt/mpich/lib/pkgconfig
+setenv                  MPI_BIN         /global/kgt/mpich/bin
+#setenv                  MPI_FORTRAN_MOD_DIR     /usr/lib64/gfortran/modules/mpich-x86_64
+setenv                  MPI_INCLUDE     /global/kgt/mpich/include
+setenv                  MPI_LIB         /global/kgt/mpich/lib
+setenv                  MPI_MAN         /global/kgt/mpich/man
+#setenv                  MPI_PYTHON_SITEARCH     /usr/lib64/python2.7/site-packages/mpich
+#setenv                  MPI_COMPILER    mpich-x86_64
+setenv                  MPI_HOME        /global/kgt/mpich

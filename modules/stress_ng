@@ -1,0 +1,5 @@
+#%Module 1.0
+#
+#  Stress-ng
+#
+prepend-path            PATH            /global/kgt/stress_ng

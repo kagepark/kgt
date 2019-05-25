@@ -1,0 +1,7 @@
+#%Module 1.0
+#
+#  IOZONE
+#
+#conflict               mpi
+prepend-path            IOZONE_HOME     /global/kgt/iozone
+prepend-path            PATH            /global/kgt/iozone
