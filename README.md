@@ -19,7 +19,7 @@ when you want directly handle the binary file then you can use above directory
 # kgt <command> <hostname rule> [<options>] # usually help when need options. if not need options then just run.
 ```
 ## Hostname rule start
-** Make a hostname with syntax **
+* Make a hostname with syntax
 ```
 -h <hostname> syntax
   test-000[01-09] 
@@ -28,7 +28,7 @@ when you want directly handle the binary file then you can use above directory
   test[001-100]
 ```
 or
-** Find hostname from /etc/hosts file **
+* Find hostname from /etc/hosts file
 ```
 -g test         => It will find all of test-XXXXX hostname from /etc/hosts file.
 -g test -nodash => it will find hostname not included dash
